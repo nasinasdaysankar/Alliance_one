@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "384089401859",
+    "project_id": "allianceone-7b0fa",
+    "storage_bucket": "allianceone-7b0fa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:384089401859:android:07f093cf483ab50b74bc36",
+        "android_client_info": {
+          "package_name": "com.example.alliance_one"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAWgwsBtPrvMrVa0uzgPCqqq8NHshiwi7U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
