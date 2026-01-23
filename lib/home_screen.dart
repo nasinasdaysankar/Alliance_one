@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  int _lastPageBeforeResults = 0;
   bool _hasUnreadNotifications = false;
 
   @override
@@ -123,6 +124,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void _goToPage(int page) {
     if (_currentPage == page) return;
 
+    // Track where we came from if going to Results (Page 2)
+    if (page == 2) {
+      _lastPageBeforeResults = _currentPage;
+    }
+
     // If skipping a page (e.g., 0 -> 2 or 2 -> 0), jump instantly to avoid showing the middle page
     if ((_currentPage - page).abs() > 1) {
       _pageController.jumpToPage(page);
@@ -168,7 +174,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_currentPage > 0)
                     IconButton(
                       icon: const Icon(Icons.chevron_left, color: Colors.white),
-                      onPressed: () => _goToPage(0), 
+                      onPressed: () {
+                        if (_currentPage == 2) {
+                           _goToPage(_lastPageBeforeResults);
+                        } else {
+                           _goToPage(0);
+                        }
+                      }, 
                     )
                   else
                     const SizedBox(width: 48),
@@ -223,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   // RIGHT CHEVRON: Only on Home Page (0). Removed on Notifications (1) and Results (2).
                   if (_currentPage == 0)
                     IconButton(
-                      icon: const Icon(Icons.chevron_right, color: Colors.white),
+                      icon: const Icon(Icons.emoji_events, color: Colors.white),
                       onPressed: () => _goToPage(2), // Skips to Results
                     )
                   else
