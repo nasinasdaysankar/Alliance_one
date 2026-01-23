@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'webview_screen.dart';
+import 'results_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,102 +17,139 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _hasUnreadNotifications = false;
 
   @override
   void initState() {
     super.initState();
-      _requestNotificationPermission();
-        _createNotificationChannel();
-
-
+    _requestNotificationPermission();
+    _createNotificationChannel();
     _setupFCM();
+    FirebaseMessaging.instance.subscribeToTopic('all');
+    _listenForUnreadNotifications();
+  }
+
+  void _listenForUnreadNotifications() {
+    FirebaseFirestore.instance
+        .collection('notifications')
+        .snapshots()
+        .listen((snapshot) async {
+      if (snapshot.docs.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        final lastViewed = prefs.getInt('last_viewed_notifications') ?? 0;
+        
+        // Check if any notification is newer than last viewed
+        bool hasNew = false;
+        for (var doc in snapshot.docs) {
+          final Timestamp? ts = doc['time'];
+          if (ts != null && ts.millisecondsSinceEpoch > lastViewed) {
+             hasNew = true;
+             break;
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _hasUnreadNotifications = hasNew;
+          });
+        }
+      }
+    });
   }
 
   // 🔔 Setup FCM and save notifications to Firestore
   void _setupFCM() {
-  FirebaseMessaging.instance.requestPermission();
+    FirebaseMessaging.instance.requestPermission();
 
-  // Foreground
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-    if (message.notification != null) {
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'title': message.notification!.title ?? 'No title',
-        'body': message.notification!.body ?? '',
-        'time': FieldValue.serverTimestamp(),
-      });
-    }
-  });
+    // Foreground
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      if (message.notification != null) {
+        // Save to Firestore handled by cloud function or admin app usually, 
+        // but keeping existing logic if Admin App doesn't double-write?
+        // Actually Admin App writes to Firestore. 
+        // We shouldn't duplicate write here if the sender (Admin) already writes.
+        // Assuming Admin writes to Firestore, we just listen. 
+        // BUT current code wrote to Firestore on receipt. 
+        // If Admin writes to Firestore AND sends FCM, and we write to Firestore on FCM...
+        // We get duplicates. 
+        // Since Admin App writes to Firestore, we should REMOVE writing here.
+        // However, user said "make this work correctly".
+        // I will COMMENT OUT the write here to prevent duplicates if Admin writes.
+        // Wait, Admin App DOES write to Firestore.
+        // So Main App should NOT write on receipt.
+        
+        // Just show local notification or let system handle it.
+      }
+    });
 
-  // Background (app opened from tray)
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
-    if (message.notification != null) {
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'title': message.notification!.title ?? 'No title',
-        'body': message.notification!.body ?? '',
-        'time': FieldValue.serverTimestamp(),
-      });
-    }
-  });
-
-  // ❗ Terminated state (THIS WAS MISSING)
-  FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) async {
-    if (message != null && message.notification != null) {
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'title': message.notification!.title ?? 'No title',
-        'body': message.notification!.body ?? '',
-        'time': FieldValue.serverTimestamp(),
-      });
-    }
-  });
-}
-
-
-void _createNotificationChannel() async {
-  const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'high_importance_channel', // MUST MATCH FCM
-    'Alliance One Notifications',
-    description: 'Notifications for Alliance One',
-    importance: Importance.high,
-  );
-
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(channel);
-}
-
-
-Future<void> _requestNotificationPermission() async {
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-  NotificationSettings settings = await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-
-  if (settings.authorizationStatus == AuthorizationStatus.denied) {
-    debugPrint('❌ Notification permission denied');
-  } else {
-    debugPrint('✅ Notification permission granted');
+    // Background & Terminated handled by system tray usually.
   }
-}
+
+
+  void _createNotificationChannel() async {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel', // MUST MATCH FCM
+      'Alliance One Notifications',
+      description: 'Notifications for Alliance One',
+      importance: Importance.high,
+    );
+
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+  }
+
+
+  Future<void> _requestNotificationPermission() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.denied) {
+      debugPrint('❌ Notification permission denied');
+    } else {
+      debugPrint('✅ Notification permission granted');
+    }
+  }
 
   void _goToPage(int page) {
-    _pageController.animateToPage(
-      page,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    if (_currentPage == page) return;
+
+    // If skipping a page (e.g., 0 -> 2 or 2 -> 0), jump instantly to avoid showing the middle page
+    if ((_currentPage - page).abs() > 1) {
+      _pageController.jumpToPage(page);
+    } else {
+      _pageController.animateToPage(
+        page,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+    
     setState(() {
       _currentPage = page;
     });
   }
 
-  void _openNotifications() => _goToPage(1);
+  Future<void> _openNotifications() async {
+    // Save current time as last viewed
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('last_viewed_notifications', DateTime.now().millisecondsSinceEpoch);
+    
+    setState(() {
+      _hasUnreadNotifications = false;
+    });
+
+    _goToPage(1);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -125,12 +164,14 @@ Future<void> _requestNotificationPermission() async {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left, color: Colors.white),
-                    onPressed: _currentPage > 0
-                        ? () => _goToPage(_currentPage - 1)
-                        : null,
-                  ),
+                   // LEFT CHEVRON: Skips Notifications (Goes to Home 0)
+                  if (_currentPage > 0)
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left, color: Colors.white),
+                      onPressed: () => _goToPage(0), 
+                    )
+                  else
+                    const SizedBox(width: 48),
 
                   Expanded(
                     child: Text(
@@ -148,21 +189,45 @@ Future<void> _requestNotificationPermission() async {
                     ),
                   ),
 
+                  // BELL ICON (Only on Home Page or Always? User said "when user oopen the screen [implied notifications] the dot should dissaper")
+                  // Typically bell is on Top Bar. If we are ON Notification page, maybe hide bell or show it without badge?
+                  // Existing code only showed if _currentPage == 0.
                   if (_currentPage == 0)
-                    IconButton(
-                      icon: const Icon(Icons.notifications_none,
-                          color: Colors.white),
-                      onPressed: _openNotifications,
+                    Stack(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.notifications_none, color: Colors.white),
+                          onPressed: _openNotifications,
+                        ),
+                        if (_hasUnreadNotifications)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 10,
+                                minHeight: 10,
+                              ),
+                            ),
+                          ),
+                      ],
                     )
                   else
                     const SizedBox(width: 48),
 
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right, color: Colors.white),
-                    onPressed: _currentPage < 2
-                        ? () => _goToPage(_currentPage + 1)
-                        : null,
-                  ),
+                  // RIGHT CHEVRON: Only on Home Page (0). Removed on Notifications (1) and Results (2).
+                  if (_currentPage == 0)
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right, color: Colors.white),
+                      onPressed: () => _goToPage(2), // Skips to Results
+                    )
+                  else
+                    const SizedBox(width: 48),
                 ],
               ),
             ),
@@ -172,14 +237,14 @@ Future<void> _requestNotificationPermission() async {
               child: PageView(
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
-                children: const [
+                children: [
                   WebViewScreen(
                     url: 'https://one.alliance.edu.in',
                   ),
-                  NotificationsPage(),
-                  WebViewScreen(
-                    url: 'https://results.pmk.codes',
+                  NotificationsPage(
+                    onResultClick: () => _goToPage(2), // Redirect to Results
                   ),
+                  const ResultsScreen(),
                 ],
               ),
             ),
