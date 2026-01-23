@@ -176,13 +176,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: isRead 
-              ? Colors.white.withOpacity(0.02) 
-              : Colors.white.withOpacity(0.08),
+              ? const Color(0xFF1E1E1E) // Slightly darker for read
+              : const Color(0xFF252525), // Professional Grey for unread
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isResultNotification 
                 ? const Color(0xFF6C63FF).withOpacity(isRead ? 0.3 : 0.8) 
-                : Colors.white.withOpacity(isRead ? 0.05 : 0.2),
+                : Colors.white.withOpacity(isRead ? 0.05 : 0.1),
             width: isRead ? 1 : 1.5,
           ),
         ),
