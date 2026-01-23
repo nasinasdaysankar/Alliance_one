@@ -22,7 +22,7 @@ class EventsData {
           title: 'Results',
           description: 'Click to view results',
           rules: [],
-          url: 'https://results.pmk.codes',
+          url: 'https://results.pmk.code',
         ),
       ],
     ),
