@@ -164,29 +164,15 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ⬅️➡️ TOP BAR WITH 🔔
-            Container(
-              height: 56,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: [
-                   // LEFT CHEVRON: Skips Notifications (Goes to Home 0)
-                  if (_currentPage > 0)
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left, color: Colors.white),
-                      onPressed: () {
-                        if (_currentPage == 2) {
-                           _goToPage(_lastPageBeforeResults);
-                        } else {
-                           _goToPage(0);
-                        }
-                      }, 
-                    )
-                  else
-                    const SizedBox(width: 48),
-
-                  Expanded(
-                    child: Text(
+              // ⬅️➡️ TOP BAR WITH 🔔
+              Container(
+                height: 56,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 1. CENTER TITLE
+                    Text(
                       _currentPage == 0
                           ? 'Alliance One'
                           : _currentPage == 1
@@ -199,50 +185,67 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
 
-                  // BELL ICON (Only on Home Page or Always? User said "when user oopen the screen [implied notifications] the dot should dissaper")
-                  // Typically bell is on Top Bar. If we are ON Notification page, maybe hide bell or show it without badge?
-                  // Existing code only showed if _currentPage == 0.
-                  if (_currentPage == 0)
-                    Stack(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.notifications_none, color: Colors.white),
-                          onPressed: _openNotifications,
-                        ),
-                        if (_hasUnreadNotifications)
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 10,
-                                minHeight: 10,
-                              ),
+                    // 2. LEFT ACTION (Back)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _currentPage > 0
+                          ? IconButton(
+                              icon: const Icon(Icons.chevron_left, color: Colors.white),
+                              onPressed: () {
+                                if (_currentPage == 2) {
+                                  _goToPage(_lastPageBeforeResults);
+                                } else {
+                                  _goToPage(0);
+                                }
+                              },
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+
+                    // 3. RIGHT ACTIONS (Bell + Chevron/Trophy)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_currentPage == 0)
+                            Stack(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.notifications_none, color: Colors.white),
+                                  onPressed: _openNotifications,
+                                ),
+                                if (_hasUnreadNotifications)
+                                  Positioned(
+                                    right: 8,
+                                    top: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 10,
+                                        minHeight: 10,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ),
-                      ],
-                    )
-                  else
-                    const SizedBox(width: 48),
-
-                  // RIGHT CHEVRON: Only on Home Page (0). Removed on Notifications (1) and Results (2).
-                  if (_currentPage == 0)
-                    IconButton(
-                      icon: const Icon(Icons.emoji_events, color: Colors.white),
-                      onPressed: () => _goToPage(2), // Skips to Results
-                    )
-                  else
-                    const SizedBox(width: 48),
-                ],
+                          
+                          if (_currentPage == 0)
+                            IconButton(
+                              icon: const Icon(Icons.emoji_events, color: Colors.white),
+                              onPressed: () => _goToPage(2), // Skips to Results
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
             // Pages
             Expanded(
