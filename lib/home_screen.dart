@@ -166,6 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
               // ⬅️➡️ TOP BAR WITH 🔔
               Container(
+                width: double.infinity,
                 height: 56,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Stack(
