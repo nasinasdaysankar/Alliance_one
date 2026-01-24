@@ -16,11 +16,14 @@ class NotificationsPage extends StatefulWidget {
 class _NotificationsPageState extends State<NotificationsPage> {
   Set<String> _readIds = {};
   Set<String> _deletedIds = {};
+  String _selectedFilter = 'All'; // Filter by event name
+  List<String> _eventNames = [];
 
   @override
   void initState() {
     super.initState();
     _loadState();
+    _fetchEventNames();
   }
 
   Future<void> _loadState() async {
@@ -32,6 +35,52 @@ class _NotificationsPageState extends State<NotificationsPage> {
         _readIds = readList.toSet();
         _deletedIds = deletedList.toSet();
       });
+    }
+  }
+
+  Future<void> _fetchEventNames() async {
+    try {
+      // Get unique event names from notifications
+      final snapshot = await FirebaseFirestore.instance
+          .collection('notifications')
+          .get();
+      
+      Set<String> events = {'All'}; // Always include "All"
+      
+      for (var doc in snapshot.docs) {
+        final title = doc['title'] ?? '';
+        final body = doc['body'] ?? '';
+        
+        // Try to extract event name from title or body
+        // Format: "Results for EventName are now available" or similar
+        if (title.contains('Results for') && title.contains('are now available')) {
+          final eventName = title
+              .replaceAll('Results for ', '')
+              .replaceAll(' are now available.', '')
+              .trim();
+          if (eventName.isNotEmpty) {
+            events.add(eventName);
+          }
+        }
+        // Also check in body
+        if (body.contains('Results for') && body.contains('are now available')) {
+          final eventName = body
+              .replaceAll('Results for ', '')
+              .replaceAll(' are now available.', '')
+              .trim();
+          if (eventName.isNotEmpty) {
+            events.add(eventName);
+          }
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _eventNames = events.toList();
+        });
+      }
+    } catch (e) {
+      print("Error fetching event names: $e");
     }
   }
 
@@ -334,6 +383,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
             // Filter out deleted notifications locally
             final visibleDocs = allDocs.where((doc) => !_deletedIds.contains(doc.id)).toList();
 
+            // Filter by selected event
+            final filteredDocs = _selectedFilter == 'All'
+                ? visibleDocs
+                : visibleDocs.where((doc) {
+                    final title = doc['title'] ?? '';
+                    final body = doc['body'] ?? '';
+                    return title.contains(_selectedFilter) || body.contains(_selectedFilter);
+                  }).toList();
+
             if (visibleDocs.isEmpty) {
               return Center(
                 child: Column(
@@ -359,19 +417,56 @@ class _NotificationsPageState extends State<NotificationsPage> {
             }
 
             // Segregate Unread and Read
-            final unreadDocs = visibleDocs.where((doc) => !_readIds.contains(doc.id)).toList();
-            final readDocs = visibleDocs.where((doc) => _readIds.contains(doc.id)).toList();
-
-            // Check if there are unread messages to enable "Mark all as read"
-            // Wait, we need to show the button somewhere.
-            // Since this page is embedded in a PageView in HomeScreen, we don't have a standard AppBar.
-            // We can add a header row at the top of the list or use a Stack.
-            // A header row inside the ListView is safer for scrolling.
+            final unreadDocs = filteredDocs.where((doc) => !_readIds.contains(doc.id)).toList();
+            final readDocs = filteredDocs.where((doc) => _readIds.contains(doc.id)).toList();
             
             return ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               children: [
-                // Mark All Read Button (Only if there are unread messages)
+                // Event Filter Chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _eventNames.map((eventName) {
+                      final isSelected = _selectedFilter == eventName;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedFilter = eventName;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? const Color(0xFF6C63FF)
+                                  : Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected
+                                    ? const Color(0xFF6C63FF)
+                                    : Colors.white.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Text(
+                              eventName,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Mark All Read Button
                 if (unreadDocs.isNotEmpty)
                   Align(
                     alignment: Alignment.centerRight,
@@ -390,18 +485,33 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     ),
                   ),
                 
-                if (unreadDocs.isNotEmpty) ...[
-                  if (readDocs.isNotEmpty) _buildSectionHeader('NEW'),
-                  ...unreadDocs.map(_buildNotificationItem),
-                ],
+                if (filteredDocs.isEmpty && visibleDocs.isNotEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text(
+                        'No notifications for $_selectedFilter',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  )
+                else ...[
+                  if (unreadDocs.isNotEmpty) ...[
+                    if (readDocs.isNotEmpty) _buildSectionHeader('NEW'),
+                    ...unreadDocs.map(_buildNotificationItem),
+                  ],
 
-                if (readDocs.isNotEmpty) ...[
-                  if (unreadDocs.isNotEmpty) 
-                     Padding(
-                       padding: const EdgeInsets.only(top: 16),
-                       child: _buildSectionHeader('EARLIER'),
-                     ),
-                  ...readDocs.map(_buildNotificationItem),
+                  if (readDocs.isNotEmpty) ...[
+                    if (unreadDocs.isNotEmpty) 
+                       Padding(
+                         padding: const EdgeInsets.only(top: 16),
+                         child: _buildSectionHeader('EARLIER'),
+                       ),
+                    ...readDocs.map(_buildNotificationItem),
+                  ],
                 ],
               ],
             );
