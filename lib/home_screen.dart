@@ -160,122 +160,137 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-              // ⬅️➡️ TOP BAR WITH 🔔
-              Container(
-                width: double.infinity,
-                height: 56,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // 1. CENTER TITLE
-                    Text(
-                      _currentPage == 0
-                          ? 'Alliance One'
-                          : _currentPage == 1
-                              ? 'Notifications'
-                              : 'Results',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+    return PopScope(
+      canPop: _currentPage == 0,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+
+        // Custom Back Logic mirroring UI Back Button
+        if (_currentPage == 2) {
+          _goToPage(_lastPageBeforeResults);
+        } else if (_currentPage == 1) {
+           _goToPage(0);
+        } else {
+           _goToPage(0);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Column(
+            children: [
+                // ⬅️➡️ TOP BAR WITH 🔔
+                Container(
+                  width: double.infinity,
+                  height: 56,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // 1. CENTER TITLE
+                      Text(
+                        _currentPage == 0
+                            ? 'Alliance One'
+                            : _currentPage == 1
+                                ? 'Notifications'
+                                : 'Results',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
 
-                    // 2. LEFT ACTION (Back)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: _currentPage > 0
-                          ? IconButton(
-                              icon: const Icon(Icons.chevron_left, color: Colors.white),
-                              onPressed: () {
-                                if (_currentPage == 2) {
-                                  _goToPage(_lastPageBeforeResults);
-                                } else {
-                                  _goToPage(0);
-                                }
-                              },
-                            )
-                          : IconButton(
-                              icon: const Icon(Icons.location_on, color: Colors.white),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const FindVenueScreen(),
+                      // 2. LEFT ACTION (Back)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: _currentPage > 0
+                            ? IconButton(
+                                icon: const Icon(Icons.chevron_left, color: Colors.white),
+                                onPressed: () {
+                                  if (_currentPage == 2) {
+                                    _goToPage(_lastPageBeforeResults);
+                                  } else {
+                                    _goToPage(0);
+                                  }
+                                },
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.location_on, color: Colors.white),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const FindVenueScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+
+                      // 3. RIGHT ACTIONS (Bell + Chevron/Trophy)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_currentPage == 0)
+                              Stack(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.notifications_none, color: Colors.white),
+                                    onPressed: _openNotifications,
                                   ),
-                                );
-                              },
-                            ),
-                    ),
-
-                    // 3. RIGHT ACTIONS (Bell + Chevron/Trophy)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_currentPage == 0)
-                            Stack(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.notifications_none, color: Colors.white),
-                                  onPressed: _openNotifications,
-                                ),
-                                if (_hasUnreadNotifications)
-                                  Positioned(
-                                    right: 8,
-                                    top: 8,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 10,
-                                        minHeight: 10,
+                                  if (_hasUnreadNotifications)
+                                    Positioned(
+                                      right: 8,
+                                      top: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 10,
+                                          minHeight: 10,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          
-                          if (_currentPage == 0)
-                            IconButton(
-                              icon: const Icon(Icons.emoji_events, color: Colors.white),
-                              onPressed: () => _goToPage(2), // Skips to Results
-                            ),
-                        ],
+                                ],
+                              ),
+                            
+                            if (_currentPage == 0)
+                              IconButton(
+                                icon: const Icon(Icons.emoji_events, color: Colors.white),
+                                onPressed: () => _goToPage(2), // Skips to Results
+                              ),
+                          ],
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+
+              // Pages
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    WebViewScreen(
+                      url: 'https://one.alliance.edu.in',
                     ),
+                    NotificationsPage(
+                      onResultClick: () => _goToPage(2), // Redirect to Results
+                    ),
+                    const ResultsScreen(),
                   ],
                 ),
               ),
-
-            // Pages
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  WebViewScreen(
-                    url: 'https://one.alliance.edu.in',
-                  ),
-                  NotificationsPage(
-                    onResultClick: () => _goToPage(2), // Redirect to Results
-                  ),
-                  const ResultsScreen(),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
