@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -158,122 +159,146 @@ class _NotificationsPageState extends State<NotificationsPage> {
       timeStr = DateFormat('MMM d, h:mm a').format((doc['time'] as Timestamp).toDate());
     }
 
-    return Dismissible(
-      key: Key(id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.red.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      onDismissed: (_) => _deleteNotification(id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: isRead 
-              ? const Color(0xFF1E1E1E) 
-              : const Color(0xFF252525),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isResultNotification 
-                ? const Color(0xFF6C63FF).withOpacity(isRead ? 0.3 : 0.8) 
-                : Colors.white.withOpacity(isRead ? 0.05 : 0.1),
-            width: isRead ? 1 : 1.5,
-          ),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () {
-              _markAsRead(id);
-              if (isResultNotification) {
-                if (widget.onResultClick != null) widget.onResultClick!();
-              } else {
-                _showNotificationDetails(title, body, timeStr);
-              }
-            }, 
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Slidable(
+        key: Key(id),
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          extentRatio: 0.25,
+          children: [
+            CustomSlidableAction(
+              onPressed: (_) => _deleteNotification(id),
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.zero,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isResultNotification 
-                          ? const Color(0xFF6C63FF).withOpacity(0.2)
-                          : Colors.white.withOpacity(0.05),
+                    padding: const EdgeInsets.all(10),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      isResultNotification 
-                          ? Icons.emoji_events 
-                          : Icons.notifications_active,
-                      color: isResultNotification 
-                          ? const Color(0xFF6C63FF).withOpacity(isRead ? 0.7 : 1.0) 
-                          : Colors.white.withOpacity(isRead ? 0.5 : 0.9),
-                      size: 20,
-                    ),
+                    child: const Icon(Icons.delete, color: Colors.white, size: 24),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                title,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(isRead ? 0.7 : 1.0),
-                                  fontSize: 14,
-                                  fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            if (isResultNotification)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF6C63FF).withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text('VIEW', style: TextStyle(fontSize: 9, color: Color(0xFF6C63FF), fontWeight: FontWeight.bold)),
-                              )
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          body,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(isRead ? 0.5 : 0.8),
-                            fontSize: 12,
-                            fontWeight: isRead ? FontWeight.normal : FontWeight.w500,
-                            height: 1.3,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          timeStr,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.3),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Delete',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isRead 
+                ? const Color(0xFF1E1E1E) 
+                : const Color(0xFF252525),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isResultNotification 
+                  ? const Color(0xFF6C63FF).withOpacity(isRead ? 0.3 : 0.8) 
+                  : Colors.white.withOpacity(isRead ? 0.05 : 0.1),
+              width: isRead ? 1 : 1.5,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                _markAsRead(id);
+                if (isResultNotification) {
+                  if (widget.onResultClick != null) widget.onResultClick!();
+                } else {
+                  _showNotificationDetails(title, body, timeStr);
+                }
+              }, 
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isResultNotification 
+                            ? const Color(0xFF6C63FF).withOpacity(0.2)
+                            : Colors.white.withOpacity(0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isResultNotification 
+                            ? Icons.emoji_events 
+                            : Icons.notifications_active,
+                        color: isResultNotification 
+                            ? const Color(0xFF6C63FF).withOpacity(isRead ? 0.7 : 1.0) 
+                            : Colors.white.withOpacity(isRead ? 0.5 : 0.9),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(isRead ? 0.7 : 1.0),
+                                    fontSize: 14,
+                                    fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              if (isResultNotification)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF6C63FF).withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text('VIEW', style: TextStyle(fontSize: 9, color: Color(0xFF6C63FF), fontWeight: FontWeight.bold)),
+                                )
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            body,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(isRead ? 0.5 : 0.8),
+                              fontSize: 12,
+                              fontWeight: isRead ? FontWeight.normal : FontWeight.w500,
+                              height: 1.3,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            timeStr,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.3),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
