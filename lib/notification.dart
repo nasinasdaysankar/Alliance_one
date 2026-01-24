@@ -173,12 +173,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
       ),
       onDismissed: (_) => _deleteNotification(id),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: isRead 
-              ? const Color(0xFF1E1E1E) // Slightly darker for read
-              : const Color(0xFF252525), // Professional Grey for unread
-          borderRadius: BorderRadius.circular(20),
+              ? const Color(0xFF1E1E1E) 
+              : const Color(0xFF252525),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isResultNotification 
                 ? const Color(0xFF6C63FF).withOpacity(isRead ? 0.3 : 0.8) 
@@ -189,7 +189,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             onTap: () {
               _markAsRead(id);
               if (isResultNotification) {
@@ -199,12 +199,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
               }
             }, 
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: isResultNotification 
                           ? const Color(0xFF6C63FF).withOpacity(0.2)
@@ -218,10 +218,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       color: isResultNotification 
                           ? const Color(0xFF6C63FF).withOpacity(isRead ? 0.7 : 1.0) 
                           : Colors.white.withOpacity(isRead ? 0.5 : 0.9),
-                      size: 24,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,19 +234,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 title,
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(isRead ? 0.7 : 1.0),
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
                                 ),
                               ),
                             ),
                             if (isResultNotification)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF6C63FF).withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text('TAP TO VIEW', style: TextStyle(fontSize: 10, color: Color(0xFF6C63FF), fontWeight: FontWeight.bold)),
+                                child: const Text('VIEW', style: TextStyle(fontSize: 9, color: Color(0xFF6C63FF), fontWeight: FontWeight.bold)),
                               )
                           ],
                         ),
@@ -255,18 +255,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           body,
                           style: TextStyle(
                             color: Colors.white.withOpacity(isRead ? 0.5 : 0.8),
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: isRead ? FontWeight.normal : FontWeight.w500,
+                            height: 1.3,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           timeStr,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.3),
-                            fontSize: 11,
+                            fontSize: 10,
                           ),
                         ),
                       ],

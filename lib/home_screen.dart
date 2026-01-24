@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'webview_screen.dart';
 import 'results_screen.dart';
+import 'find_venue_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -201,7 +202,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                 }
                               },
                             )
-                          : const SizedBox.shrink(),
+                          : IconButton(
+                              icon: const Icon(Icons.location_on, color: Colors.white),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const FindVenueScreen(),
+                                  ),
+                                );
+                              },
+                            ),
                     ),
 
                     // 3. RIGHT ACTIONS (Bell + Chevron/Trophy)
