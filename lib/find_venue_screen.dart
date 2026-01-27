@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class FindVenueScreen extends StatelessWidget {
+class FindVenueScreen extends StatefulWidget {
   const FindVenueScreen({super.key});
+
+  @override
+  State<FindVenueScreen> createState() => _FindVenueScreenState();
+}
+
+class _FindVenueScreenState extends State<FindVenueScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _pageController;
+  int _hoveredIndex = -1;
 
   final List<Map<String, String>> _venues = const [
     {
@@ -10,164 +19,77 @@ class FindVenueScreen extends StatelessWidget {
       'query': 'Alfresco, Alliance University',
       'description': 'Open-air dining and hanging out spot',
       'icon': 'restaurant_menu',
+      'color': 'FF6B6B',
     },
     {
       'name': 'Admin Block',
       'query': 'Alliance University Admin Block',
       'description': 'Main administrative building',
       'icon': 'admin_panel_settings',
+      'color': '4ECDC4',
     },
     {
       'name': 'Football Ground',
       'query': 'Alliance University Football Ground',
       'description': 'Main sports ground',
       'icon': 'sports_soccer',
+      'color': '45B7D1',
     },
     {
       'name': 'LC1 Block',
       'query': 'Alliance School of Law, Alliance University',
       'description': 'Alliance School of Law',
       'icon': 'class',
+      'color': 'FFA502',
     },
     {
       'name': 'LC2 Block',
       'query': 'Alliance College of Engineering and Design',
       'description': 'Alliance College of Engineering and Design',
       'icon': 'school',
+      'color': '9D84B7',
     },
     {
       'name': 'Library',
       'query': 'Alliance University Library',
       'description': 'Central Library',
       'icon': 'local_library',
+      'color': '6C63FF',
     },
   ];
 
-  Future<void> _launchMaps(String query) async {
-    final Uri googleMapsUrl = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}');
-    final Uri appleMapsUrl = Uri.parse(
-        'https://maps.apple.com/?q=${Uri.encodeComponent(query)}');
-
-    if (await canLaunchUrl(googleMapsUrl)) {
-      await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
-    } else if (await canLaunchUrl(appleMapsUrl)) {
-      await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
-    } else {
-      throw 'Could not launch maps';
-    }
+  @override
+  void initState() {
+    super.initState();
+    _pageController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..forward();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Find Venue',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-          ),
-        ),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF1A1A2E)],
-          ),
-        ),
-        child: ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: _venues.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final venue = _venues[index];
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _launchMaps(venue['query']!),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF252525),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.05),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6C63FF).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          _getIcon(venue['icon']!),
-                          color: const Color(0xFF6C63FF),
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              venue['name']!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              venue['description']!,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.chevron_right,
-                        color: Colors.white.withOpacity(0.3),
-                        size: 24,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _launchMaps(String query) async {
+    try {
+      final String encodedQuery = Uri.encodeComponent(query);
+      final Uri googleMapsUrl = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$encodedQuery',
+      );
+
+      if (await canLaunchUrl(googleMapsUrl)) {
+        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not open maps')));
+      }
+    }
   }
 
   IconData _getIcon(String iconName) {
@@ -187,5 +109,329 @@ class FindVenueScreen extends StatelessWidget {
       default:
         return Icons.location_on;
     }
+  }
+
+  Color _getColor(String hexColor) {
+    return Color(int.parse('FF$hexColor', radix: 16));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Background with gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF1A0033),
+                  Color(0xFF2D1B4E),
+                  Color(0xFF3D2861),
+                  Color(0xFF4A3675),
+                ],
+                stops: [0.0, 0.3, 0.6, 1.0],
+              ),
+            ),
+          ),
+          // Decorative circles
+          Positioned(
+            left: -80,
+            top: 40,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -40,
+            top: 100,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.06),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 20,
+            top: 160,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -60,
+            top: 280,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.04),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -100,
+            bottom: 100,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF6C63FF).withOpacity(0.1),
+              ),
+            ),
+          ),
+          // Main content
+          Column(
+            children: [
+              // App Bar
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.15),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            'Venues',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 28,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+              ),
+              // Venues list
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                  itemCount: _venues.length,
+                  itemBuilder: (context, index) {
+                    return _buildVenueCard(index);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVenueCard(int index) {
+    final venue = _venues[index];
+    final accentColor = _getColor(venue['color'] ?? '6C63FF');
+    final isHovered = _hoveredIndex == index;
+
+    return AnimatedBuilder(
+      animation: _pageController,
+      builder: (context, child) {
+        final double delayValue = (index * 0.06);
+        final double animValue = (_pageController.value - delayValue).clamp(
+          0.0,
+          1.0,
+        );
+        final double curvedValue = Curves.easeOut.transform(animValue);
+
+        return Transform.translate(
+          offset: Offset(0, 40 * (1 - curvedValue)),
+          child: Opacity(opacity: curvedValue, child: child),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: MouseRegion(
+          onEnter: (_) {
+            setState(() {
+              _hoveredIndex = index;
+            });
+          },
+          onExit: (_) {
+            setState(() {
+              _hoveredIndex = -1;
+            });
+          },
+          child: GestureDetector(
+            onTap: () => _launchMaps(venue['query'] ?? ''),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isHovered
+                      ? [
+                          Colors.white.withOpacity(0.15),
+                          Colors.white.withOpacity(0.1),
+                        ]
+                      : [
+                          Colors.black.withOpacity(0.4),
+                          Colors.black.withOpacity(0.3),
+                        ],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isHovered
+                      ? accentColor.withOpacity(0.6)
+                      : Colors.white.withOpacity(0.15),
+                  width: 1.2,
+                ),
+                boxShadow: isHovered
+                    ? [
+                        BoxShadow(
+                          color: accentColor.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+              ),
+              transform: isHovered
+                  ? (Matrix4.identity()..translate(0.0, -6.0))
+                  : Matrix4.identity(),
+              child: Row(
+                children: [
+                  // Icon Container
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          accentColor.withOpacity(0.2),
+                          accentColor.withOpacity(0.08),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: accentColor.withOpacity(isHovered ? 0.4 : 0.3),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Icon(
+                      _getIcon(venue['icon'] ?? ''),
+                      color: accentColor,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+
+                  // Text Content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          venue['name'] ?? 'Venue',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          venue['description'] ?? '',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: 0.2,
+                            height: 1.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // Arrow Icon
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(isHovered ? 0.2 : 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: accentColor.withOpacity(isHovered ? 0.4 : 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: AnimatedRotation(
+                      turns: isHovered ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        color: accentColor.withOpacity(isHovered ? 1 : 0.5),
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

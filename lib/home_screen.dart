@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:alliance_one/notification.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -7,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'webview_screen.dart';
 import 'results_screen.dart';
 import 'find_venue_screen.dart';
+import 'alliance_bot_screen.dart';
+import 'theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,20 +18,34 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   int _lastPageBeforeResults = 0;
   bool _hasUnreadNotifications = false;
+  bool _showChatBot = false;
+  late AnimationController _bellAnimController;
+  late Animation<double> _bellAnimation;
 
   @override
   void initState() {
     super.initState();
+    _setupBellAnimation();
     _requestNotificationPermission();
     _createNotificationChannel();
     _setupFCM();
     FirebaseMessaging.instance.subscribeToTopic('all');
     _listenForUnreadNotifications();
+  }
+
+  void _setupBellAnimation() {
+    _bellAnimController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _bellAnimation = Tween<double>(begin: 0, end: 0.15).animate(
+      CurvedAnimation(parent: _bellAnimController, curve: Curves.elasticIn),
+    );
   }
 
   void _listenForUnreadNotifications() {
@@ -40,7 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
         final prefs = await SharedPreferences.getInstance();
         final lastViewed = prefs.getInt('last_viewed_notifications') ?? 0;
         
-        // Check if any notification is newer than last viewed
         bool hasNew = false;
         for (var doc in snapshot.docs) {
           final Timestamp? ts = doc['time'];
@@ -54,43 +70,27 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _hasUnreadNotifications = hasNew;
           });
+          if (hasNew) {
+            _bellAnimController.repeat(reverse: true);
+          } else {
+            _bellAnimController.stop();
+            _bellAnimController.reset();
+          }
         }
       }
     });
   }
 
-  // 🔔 Setup FCM and save notifications to Firestore
   void _setupFCM() {
     FirebaseMessaging.instance.requestPermission();
-
-    // Foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      if (message.notification != null) {
-        // Save to Firestore handled by cloud function or admin app usually, 
-        // but keeping existing logic if Admin App doesn't double-write?
-        // Actually Admin App writes to Firestore. 
-        // We shouldn't duplicate write here if the sender (Admin) already writes.
-        // Assuming Admin writes to Firestore, we just listen. 
-        // BUT current code wrote to Firestore on receipt. 
-        // If Admin writes to Firestore AND sends FCM, and we write to Firestore on FCM...
-        // We get duplicates. 
-        // Since Admin App writes to Firestore, we should REMOVE writing here.
-        // However, user said "make this work correctly".
-        // I will COMMENT OUT the write here to prevent duplicates if Admin writes.
-        // Wait, Admin App DOES write to Firestore.
-        // So Main App should NOT write on receipt.
-        
-        // Just show local notification or let system handle it.
-      }
+      // Notification received - handled by system
     });
-
-    // Background & Terminated handled by system tray usually.
   }
-
 
   void _createNotificationChannel() async {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'high_importance_channel', // MUST MATCH FCM
+      'high_importance_channel',
       'Alliance One Notifications',
       description: 'Notifications for Alliance One',
       importance: Importance.high,
@@ -104,7 +104,6 @@ class _HomeScreenState extends State<HomeScreen> {
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
   }
-
 
   Future<void> _requestNotificationPermission() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
@@ -125,12 +124,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _goToPage(int page) {
     if (_currentPage == page) return;
 
-    // Track where we came from if going to Results (Page 2)
     if (page == 2) {
       _lastPageBeforeResults = _currentPage;
     }
 
-    // If skipping a page (e.g., 0 -> 2 or 2 -> 0), jump instantly to avoid showing the middle page
     if ((_currentPage - page).abs() > 1) {
       _pageController.jumpToPage(page);
     } else {
@@ -147,25 +144,37 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openNotifications() async {
-    // Save current time as last viewed
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('last_viewed_notifications', DateTime.now().millisecondsSinceEpoch);
     
     setState(() {
       _hasUnreadNotifications = false;
     });
+    _bellAnimController.stop();
+    _bellAnimController.reset();
 
     _goToPage(1);
+  }
+
+  void _toggleChatBot() {
+    setState(() {
+      _showChatBot = !_showChatBot;
+    });
+  }
+
+  @override
+  void dispose() {
+    _bellAnimController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: _currentPage == 0,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
 
-        // Custom Back Logic mirroring UI Back Button
         if (_currentPage == 2) {
           _goToPage(_lastPageBeforeResults);
         } else if (_currentPage == 1) {
@@ -175,71 +184,190 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-          child: Column(
-            children: [
-                // ⬅️➡️ TOP BAR WITH 🔔
-                Container(
-                  width: double.infinity,
-                  height: 56,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // 1. CENTER TITLE
-                      Text(
-                        _currentPage == 0
-                            ? 'Alliance One'
-                            : _currentPage == 1
-                                ? 'Notifications'
-                                : 'Results',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
+        backgroundColor: AppTheme.darkBackground,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.backgroundGradient,
+          ),
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    // Modern glassmorphism top bar
+                    _buildTopBar(),
+
+                    // Pages
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          WebViewScreen(
+                            url: 'https://one.alliance.edu.in',
+                          ),
+                          NotificationsPage(
+                            onResultClick: () => _goToPage(2),
+                          ),
+                          const ResultsScreen(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // 🤖 ALLIANCE BOT CHATBOT OVERLAY
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    height: _showChatBot ? 400 : 0,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      child: AllianceBotScreen(
+                        onClose: _toggleChatBot,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 🤖 CHATBOT BUTTON (Always visible at bottom)
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: _toggleChatBot,
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor,
+                            AppTheme.primaryColor.withOpacity(0.8),
+                          ],
                         ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor.withOpacity(0.5),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            _showChatBot ? Icons.close : Icons.chat_bubble_outline,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-                      // 2. LEFT ACTION (Back)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: _currentPage > 0
-                            ? IconButton(
-                                icon: const Icon(Icons.chevron_left, color: Colors.white),
-                                onPressed: () {
-                                  if (_currentPage == 2) {
-                                    _goToPage(_lastPageBeforeResults);
-                                  } else {
-                                    _goToPage(0);
-                                  }
-                                },
-                              )
-                            : IconButton(
-                                icon: const Icon(Icons.location_on, color: Colors.white),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const FindVenueScreen(),
-                                    ),
-                                  );
-                                },
+  Widget _buildTopBar() {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+                width: 1,
+              ),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Center title with gradient
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [
+                      Colors.white,
+                      Colors.white.withOpacity(0.8),
+                    ],
+                  ).createShader(bounds),
+                  child: Text(
+                    _currentPage == 0
+                        ? 'Alliance One'
+                        : _currentPage == 1
+                            ? 'Notifications'
+                            : 'Results',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+
+                // Left action
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _currentPage > 0
+                      ? _buildIconButton(
+                          icon: Icons.chevron_left_rounded,
+                          onPressed: () {
+                            if (_currentPage == 2) {
+                              _goToPage(_lastPageBeforeResults);
+                            } else {
+                              _goToPage(0);
+                            }
+                          },
+                        )
+                      : _buildIconButton(
+                          icon: Icons.location_on_rounded,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const FindVenueScreen(),
                               ),
-                      ),
+                            );
+                          },
+                        ),
+                ),
 
-                      // 3. RIGHT ACTIONS (Bell + Chevron/Trophy)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (_currentPage == 0)
-                              Stack(
+                // Right actions
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_currentPage == 0)
+                        AnimatedBuilder(
+                          animation: _bellAnimation,
+                          builder: (context, child) {
+                            return Transform.rotate(
+                              angle: _bellAnimation.value,
+                              child: Stack(
                                 children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.notifications_none, color: Colors.white),
+                                  _buildIconButton(
+                                    icon: Icons.notifications_rounded,
                                     onPressed: _openNotifications,
                                   ),
                                   if (_hasUnreadNotifications)
@@ -247,49 +375,71 @@ class _HomeScreenState extends State<HomeScreen> {
                                       right: 8,
                                       top: 8,
                                       child: Container(
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              AppTheme.accentSecondary,
+                                              AppTheme.accentSecondary.withOpacity(0.8),
+                                            ],
+                                          ),
                                           shape: BoxShape.circle,
-                                        ),
-                                        constraints: const BoxConstraints(
-                                          minWidth: 10,
-                                          minHeight: 10,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppTheme.accentSecondary.withOpacity(0.5),
+                                              blurRadius: 6,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
                                 ],
                               ),
-                            
-                            if (_currentPage == 0)
-                              IconButton(
-                                icon: const Icon(Icons.emoji_events, color: Colors.white),
-                                onPressed: () => _goToPage(2), // Skips to Results
-                              ),
-                          ],
+                            );
+                          },
                         ),
-                      ),
+                      
+                      if (_currentPage == 0)
+                        _buildIconButton(
+                          icon: Icons.emoji_events_rounded,
+                          onPressed: () => _goToPage(2),
+                          isAccent: true,
+                        ),
                     ],
                   ),
                 ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-              // Pages
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    WebViewScreen(
-                      url: 'https://one.alliance.edu.in',
-                    ),
-                    NotificationsPage(
-                      onResultClick: () => _goToPage(2), // Redirect to Results
-                    ),
-                    const ResultsScreen(),
-                  ],
-                ),
-              ),
-            ],
+  Widget _buildIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool isAccent = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isAccent 
+                ? AppTheme.primaryColor.withOpacity(0.2) 
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          ),
+          child: Icon(
+            icon,
+            color: isAccent ? AppTheme.primaryColor : Colors.white,
+            size: 24,
           ),
         ),
       ),

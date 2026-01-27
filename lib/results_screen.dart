@@ -176,7 +176,36 @@ class _ResultsScreenState extends State<ResultsScreen> {
         ),
         child: Column(
           children: [
-            // Program Filter Chips
+            // Search Bar - NOW AT THE TOP
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: SizedBox(
+                height: 48,
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toLowerCase();
+                    });
+                  },
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Search results...',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
+                    prefixIcon: Icon(Icons.search, size: 20, color: Colors.white.withOpacity(0.4)),
+                    filled: true,
+                    fillColor: const Color(0xFF252525),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                  ),
+                ),
+              ),
+            ),
+
+            // Program Filter Chips - NOW BELOW SEARCH BAR
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: _loadingPrograms
@@ -268,35 +297,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
                         ],
                       ),
                     ),
-            ),
-
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: SizedBox(
-                height: 48,
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase();
-                    });
-                  },
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Search results...',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
-                    prefixIcon: Icon(Icons.search, size: 20, color: Colors.white.withOpacity(0.4)),
-                    filled: true,
-                    fillColor: const Color(0xFF252525),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  ),
-                ),
-              ),
             ),
             
             Expanded(
