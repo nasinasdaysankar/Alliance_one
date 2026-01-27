@@ -278,16 +278,28 @@ class _NotificationsPageState extends State<NotificationsPage> {
         ),
         child: Container(
           decoration: BoxDecoration(
-            color:
-                isRead ? const Color(0xFF1E1E1E) : const Color(0xFF252525),
-            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.black.withOpacity(0.4),
+                Colors.black.withOpacity(0.3),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isResultNotification
-                  ? const Color(0xFF6C63FF)
-                      .withOpacity(isRead ? 0.3 : 0.8)
-                  : Colors.white.withOpacity(isRead ? 0.05 : 0.1),
-              width: isRead ? 1 : 1.5,
+                  ? const Color(0xFF6C63FF).withOpacity(0.8)
+                  : Colors.white.withOpacity(0.15),
+              width: 1.2,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Material(
             color: Colors.transparent,
@@ -402,229 +414,304 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.black, Color(0xFF1A1A2E)],
-          ),
-        ),
-        child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('notifications')
-              .orderBy('time', descending: true)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(
-                  child: CircularProgressIndicator(
-                      color: Color(0xFF6C63FF)));
-            }
-
-            final allDocs = snapshot.data!.docs;
-
-            // Filter out deleted notifications locally
-            final visibleDocs = allDocs
-                .where((doc) => !_deletedIds.contains(doc.id))
-                .toList();
-
-            // Filter by selected program
-            final filteredDocs = _selectedFilter == 'All'
-                ? visibleDocs
-                : visibleDocs.where((doc) {
-                    try {
-                      final programId = doc.get('program_id') ?? '';
-                      return programId.toString() == _selectedFilter;
-                    } catch (e) {
-                      return false;
-                    }
-                  }).toList();
-
-            if (visibleDocs.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.notifications_none,
-                      color: Colors.white.withOpacity(0.5),
-                      size: 80,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No notifications yet',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            // Segregate Unread and Read
-            final unreadDocs = filteredDocs
-                .where((doc) => !_readIds.contains(doc.id))
-                .toList();
-            final readDocs = filteredDocs
-                .where((doc) => _readIds.contains(doc.id))
-                .toList();
-
-            return ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              children: [
-                // Program Filter Chips
-                _loadingPrograms
-                    ? const Center(
-                        child: SizedBox(
-                            height: 40,
-                            child: CircularProgressIndicator(
-                                color: Color(0xFF6C63FF))))
-                    : SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            // "All" chip
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedFilter = 'All';
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: _selectedFilter == 'All'
-                                        ? const Color(0xFF6C63FF)
-                                        : Colors.white.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: _selectedFilter == 'All'
-                                          ? const Color(0xFF6C63FF)
-                                          : Colors.white.withOpacity(0.2),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'All',
-                                    style: TextStyle(
-                                      color: _selectedFilter == 'All'
-                                          ? Colors.white
-                                          : Colors.white70,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            // Program chips
-                            ..._programs.map((program) {
-                              final programId = program['id']?.toString() ?? '';
-                              final programName =
-                                  program['name'] ?? 'Unknown';
-                              final isSelected =
-                                  _selectedFilter == programId;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8.0),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedFilter = programId;
-                                    });
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? const Color(0xFF6C63FF)
-                                          : Colors.white.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? const Color(0xFF6C63FF)
-                                            : Colors.white.withOpacity(0.2),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      programName,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.white70,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ],
-                        ),
-                      ),
-                const SizedBox(height: 16),
-
-                // Mark All Read Button
-                if (unreadDocs.isNotEmpty)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: () => _markAllAsRead(
-                          unreadDocs.map((d) => d.id).toList()),
-                      icon: const Icon(Icons.done_all,
-                          size: 16, color: Color(0xFF6C63FF)),
-                      label: const Text(
-                        'Mark all as read',
-                        style: TextStyle(
-                            color: Color(0xFF6C63FF),
-                            fontWeight: FontWeight.bold),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        alignment: Alignment.centerRight,
-                      ),
-                    ),
-                  ),
-
-                if (filteredDocs.isEmpty && visibleDocs.isNotEmpty)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Text(
-                        'No notifications for this program',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  )
-                else ...[
-                  if (unreadDocs.isNotEmpty) ...[
-                    if (readDocs.isNotEmpty) _buildSectionHeader('NEW'),
-                    ...unreadDocs.map(_buildNotificationItem),
-                  ],
-                  if (readDocs.isNotEmpty) ...[
-                    if (unreadDocs.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: _buildSectionHeader('EARLIER'),
-                      ),
-                    ...readDocs.map(_buildNotificationItem),
-                  ],
+      body: Stack(
+        children: [
+          // Background with gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF1A0033),
+                  Color(0xFF2D1B4E),
+                  Color(0xFF3D2861),
+                  Color(0xFF4A3675),
                 ],
-              ],
-            );
-          },
-        ),
+                stops: [0.0, 0.3, 0.6, 1.0],
+              ),
+            ),
+          ),
+          // Decorative circles
+          Positioned(
+            left: -80,
+            top: 40,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -40,
+            top: 100,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.06),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 20,
+            top: 160,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -60,
+            top: 280,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.04),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -100,
+            bottom: 100,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF6C63FF).withOpacity(0.1),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('notifications')
+                  .orderBy('time', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(
+                      child: CircularProgressIndicator(
+                          color: Color(0xFF6C63FF)));
+                }
+
+                final allDocs = snapshot.data!.docs;
+
+                // Filter out deleted notifications locally
+                final visibleDocs = allDocs
+                    .where((doc) => !_deletedIds.contains(doc.id))
+                    .toList();
+
+                // Filter by selected program
+                final filteredDocs = _selectedFilter == 'All'
+                    ? visibleDocs
+                    : visibleDocs.where((doc) {
+                        try {
+                          final programId = doc.get('program_id') ?? '';
+                          return programId.toString() == _selectedFilter;
+                        } catch (e) {
+                          return false;
+                        }
+                      }).toList();
+
+                if (visibleDocs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_none,
+                          color: Colors.white.withOpacity(0.5),
+                          size: 80,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No notifications yet',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // Segregate Unread and Read
+                final unreadDocs = filteredDocs
+                    .where((doc) => !_readIds.contains(doc.id))
+                    .toList();
+                final readDocs = filteredDocs
+                    .where((doc) => _readIds.contains(doc.id))
+                    .toList();
+
+                return ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                  children: [
+                    // Program Filter Chips
+                    _loadingPrograms
+                        ? const Center(
+                            child: SizedBox(
+                                height: 40,
+                                child: CircularProgressIndicator(
+                                    color: Color(0xFF6C63FF))))
+                        : SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                // "All" chip
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedFilter = 'All';
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: _selectedFilter == 'All'
+                                            ? const Color(0xFF6C63FF)
+                                            : Colors.white.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: _selectedFilter == 'All'
+                                              ? const Color(0xFF6C63FF)
+                                              : Colors.white.withOpacity(0.2),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'All',
+                                        style: TextStyle(
+                                          color: _selectedFilter == 'All'
+                                              ? Colors.white
+                                              : Colors.white70,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                // Program chips
+                                ..._programs.map((program) {
+                                  final programId = program['id']?.toString() ?? '';
+                                  final programName =
+                                      program['name'] ?? 'Unknown';
+                                  final isSelected =
+                                      _selectedFilter == programId;
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedFilter = programId;
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? const Color(0xFF6C63FF)
+                                              : Colors.white.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? const Color(0xFF6C63FF)
+                                                : Colors.white.withOpacity(0.2),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          programName,
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : Colors.white70,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
+                    const SizedBox(height: 16),
+
+                    // Mark All Read Button
+                    if (unreadDocs.isNotEmpty)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () => _markAllAsRead(
+                              unreadDocs.map((d) => d.id).toList()),
+                          icon: const Icon(Icons.done_all,
+                              size: 16, color: Color(0xFF6C63FF)),
+                          label: const Text(
+                            'Mark all as read',
+                            style: TextStyle(
+                                color: Color(0xFF6C63FF),
+                                fontWeight: FontWeight.bold),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            alignment: Alignment.centerRight,
+                          ),
+                        ),
+                      ),
+
+                    if (filteredDocs.isEmpty && visibleDocs.isNotEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Text(
+                            'No notifications for this program',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      )
+                    else ...[
+                      if (unreadDocs.isNotEmpty) ...[
+                        if (readDocs.isNotEmpty) _buildSectionHeader('NEW'),
+                        ...unreadDocs.map(_buildNotificationItem),
+                      ],
+                      if (readDocs.isNotEmpty) ...[
+                        if (unreadDocs.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: _buildSectionHeader('EARLIER'),
+                          ),
+                        ...readDocs.map(_buildNotificationItem),
+                      ],
+                    ],
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -16,147 +16,339 @@ class ResultsScreen extends StatefulWidget {
 }
 
 class _ResultsScreenState extends State<ResultsScreen> {
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  String _selectedFilter = 'All';
   List<Map<String, dynamic>> _programs = [];
   bool _loadingPrograms = true;
-  Map<String, String> _programIdToName = {}; // Map to store program ID -> Name
+  Map<String, String> _programIdToName = {};
+  String? _expandedProgramId;
+  late Stream<QuerySnapshot> _resultsStream;
 
   @override
   void initState() {
     super.initState();
     _fetchPrograms();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+    _resultsStream = FirebaseFirestore.instance
+        .collection('results')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
   }
 
   Future<void> _fetchPrograms() async {
     try {
-      const String baseUrl = "http://10.1.160.89:3000/api";
+      const baseUrl = "http://10.1.160.89:3000/api";
+      final response = await http
+          .get(Uri.parse("$baseUrl/programs"))
+          .timeout(const Duration(seconds: 10));
 
-      print("📡 Fetching programs from backend...");
+      if (response.statusCode != 200) throw Exception('Failed to load programs');
 
-      final response = await http.get(
-        Uri.parse("$baseUrl/programs"),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw Exception('Request timeout'),
-      );
+      final List<dynamic> programList = jsonDecode(response.body);
 
-      print("📊 Response Status: ${response.statusCode}");
-      print("📦 Response Body: ${response.body}");
+      if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final List<dynamic> programList = jsonDecode(response.body);
-        print("✅ Programs loaded: ${programList.length}");
+      final idToName = <String, String>{};
+      final programs = programList.map((p) {
+        final id = p['id']?.toString() ?? '';
+        final name = (p['name']?.toString() ?? 'Unnamed').trim();
+        idToName[id] = name;
+        return {'id': id, 'name': name};
+      }).toList();
 
-        if (mounted) {
-          // Create a map for quick lookup
-          final Map<String, String> idToName = {};
-          
-          setState(() {
-            _programs = programList
-                .map((p) {
-                  final id = p['id']?.toString() ?? '';
-                  final name = p['name']?.toString() ?? 'Unknown Program';
-                  idToName[id] = name;
-                  return {
-                    'id': id,
-                    'name': name,
-                  };
-                })
-                .cast<Map<String, dynamic>>()
-                .toList();
-            
-            _programIdToName = idToName;
-            _loadingPrograms = false;
-
-            if (_programs.isNotEmpty) {
-              print("✅ Programs set in state: ${_programs.length}");
-              print("📋 Program Map: $_programIdToName");
-            }
-          });
-        }
-      } else {
-        print("❌ Failed to load programs: ${response.statusCode}");
-        if (mounted) {
-          setState(() {
-            _loadingPrograms = false;
-            _programs = [];
-          });
-        }
-      }
+      setState(() {
+        _programs = programs;
+        _programIdToName = idToName;
+        _loadingPrograms = false;
+      });
     } catch (e) {
-      print("🔥 Error fetching programs: $e");
       if (mounted) {
-        setState(() {
-          _loadingPrograms = false;
-          _programs = [];
-        });
+        setState(() => _loadingPrograms = false);
       }
     }
   }
 
   Future<void> _openResult(BuildContext context, String url, String fileName) async {
-    // 1. Show Loading Indicator
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
-      // 2. Get Directory
       final dir = await getApplicationDocumentsDirectory();
-      // Ensure specific filename extension
       final name = fileName.endsWith('.pdf') ? fileName : '$fileName.pdf';
       final path = '${dir.path}/$name';
 
-      // 3. Download File
       await Dio().download(url, path);
+      if (!context.mounted) return;
+      Navigator.pop(context);
 
-      // 4. Close Loading
-      if (context.mounted) Navigator.pop(context);
-
-      // 5. Open File (Native Viewer)
       final result = await OpenFilex.open(path);
-      
-      if (result.type != ResultType.done) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-             SnackBar(content: Text('Could not open file: ${result.message}')),
-          );
-        }
+      if (result.type != ResultType.done && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open file: ${result.message}')),
+        );
       }
-
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context); // Close loading if error
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Download failed: $e')),
+          SnackBar(content: Text('Download failed: $e')),
         );
       }
     }
   }
 
-  Widget _buildSectionHeader(String title) {
+  List<QueryDocumentSnapshot> _getResultsForProgram(
+    String programId,
+    List<QueryDocumentSnapshot> allDocs,
+  ) {
+    return allDocs.where((doc) {
+      final pid = doc.get('program_id') ?? doc.get('programId') ?? '';
+      return pid.toString() == programId;
+    }).toList();
+  }
+
+  Widget _buildResultTile(QueryDocumentSnapshot doc) {
+    final eventName = doc['eventName']?.toString() ?? 'Unknown Event';
+    final fileUrl = doc['fileUrl']?.toString() ?? '';
+    final fileName = doc['fileName']?.toString() ?? 'Result';
+
+    String dateStr = '';
+    if (doc['timestamp'] is Timestamp) {
+      dateStr = DateFormat('MMM d, yyyy').format((doc['timestamp'] as Timestamp).toDate());
+    }
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white70,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.0,
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => _openResult(context, fileUrl, fileName),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white.withOpacity(0.11)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.13),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.picture_as_pdf_rounded, color: Colors.redAccent, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                        Text(
+                          eventName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w600,
+                            height: 1.3,
+                          ),
+                        ),
+                      const SizedBox(height: 5),
+                      Text(
+                        dateStr.isEmpty ? '—' : dateStr,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.65),
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgramCard(Map<String, dynamic> program, List<QueryDocumentSnapshot> allDocs) {
+    final id = program['id'] as String? ?? '';
+    final name = program['name'] as String? ?? 'Program';
+    final isExpanded = _expandedProgramId == id;
+    final results = _getResultsForProgram(id, allDocs);
+    final count = results.length;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.black.withOpacity(0.4),
+                Colors.black.withOpacity(0.3),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.15),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header row – always visible
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    if (isExpanded) {
+                      _expandedProgramId = null;
+                    } else {
+                      _expandedProgramId = id;
+                    }
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6C63FF).withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.folder_rounded,
+                          color: Color(0xFF9F91FF),
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF6C63FF).withOpacity(0.16),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '$count ${count == 1 ? "Result" : "Results"}',
+                                style: const TextStyle(
+                                  color: Color(0xFF9F91FF),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      AnimatedRotation(
+                        turns: isExpanded ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 280),
+                        curve: Curves.easeInOutCubic,
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Color(0xFF9F91FF),
+                          size: 26,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Expanded content – smooth height animation
+              AnimatedSize(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeInOutCubicEmphasized,
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(),
+                  child: isExpanded
+                      ? Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.04),
+                            border: const Border(
+                              top: BorderSide(color: Colors.white12, width: 0.5),
+                            ),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                          child: results.isEmpty
+                              ? Center(
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(vertical: 24),
+                                    padding: const EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.03),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.folder_off_outlined,
+                                          size: 40,
+                                          color: Colors.white.withOpacity(0.4),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'No results yet',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white.withOpacity(0.5),
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : Column(
+                                  children: results.map(_buildResultTile).toList(),
+                                ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -165,435 +357,150 @@ class _ResultsScreenState extends State<ResultsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, 
-      body: Container(
-        decoration: const BoxDecoration(
-           gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.black, Color(0xFF1A1A2E)],
-           ),
-        ),
-        child: Column(
-          children: [
-            // Search Bar - NOW AT THE TOP
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: SizedBox(
-                height: 48,
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase();
-                    });
-                  },
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Search results...',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
-                    prefixIcon: Icon(Icons.search, size: 20, color: Colors.white.withOpacity(0.4)),
-                    filled: true,
-                    fillColor: const Color(0xFF252525),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  ),
-                ),
+      body: Stack(
+        children: [
+          // Background with gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF1A0033),
+                  Color(0xFF2D1B4E),
+                  Color(0xFF3D2861),
+                  Color(0xFF4A3675),
+                ],
+                stops: [0.0, 0.3, 0.6, 1.0],
               ),
             ),
+          ),
+          // Decorative circles
+          Positioned(
+            left: -80,
+            top: 40,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.08),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -40,
+            top: 100,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.06),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 20,
+            top: 160,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -60,
+            top: 280,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.04),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -100,
+            bottom: 100,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF6C63FF).withOpacity(0.1),
+              ),
+            ),
+          ),
+          
+          SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: _loadingPrograms
+                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF9F91FF)))
+                      : StreamBuilder<QuerySnapshot>(
+                          stream: _resultsStream,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
 
-            // Program Filter Chips - NOW BELOW SEARCH BAR
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: _loadingPrograms
-                  ? const SizedBox(
-                      height: 40,
-                      child: CircularProgressIndicator(
-                          color: Color(0xFF6C63FF)))
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          // "All" chip
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedFilter = 'All';
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: _selectedFilter == 'All'
-                                      ? const Color(0xFF6C63FF)
-                                      : Colors.white.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: _selectedFilter == 'All'
-                                        ? const Color(0xFF6C63FF)
-                                        : Colors.white.withOpacity(0.2),
-                                  ),
+                            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                              return Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.folder_open_outlined,
+                                        size: 80, color: Colors.white.withOpacity(0.35)),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      "No results available yet",
+                                      style: TextStyle(color: Colors.white70, fontSize: 18),
+                                    ),
+                                  ],
                                 ),
+                              );
+                            }
+
+                            final docs = snapshot.data!.docs;
+
+                            if (_programs.isEmpty) {
+                              return const Center(
                                 child: Text(
-                                  'All',
-                                  style: TextStyle(
-                                    color: _selectedFilter == 'All'
-                                        ? Colors.white
-                                        : Colors.white70,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  "No programs loaded",
+                                  style: TextStyle(color: Colors.white60, fontSize: 17),
                                 ),
-                              ),
-                            ),
-                          ),
-                          // Program chips
-                          ..._programs.map((program) {
-                            final programId = program['id']?.toString() ?? '';
-                            final programName = program['name'] ?? 'Unknown';
-                            final isSelected = _selectedFilter == programId;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedFilter = programId;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? const Color(0xFF6C63FF)
-                                        : Colors.white.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? const Color(0xFF6C63FF)
-                                          : Colors.white.withOpacity(0.2),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    programName,
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : Colors.white70,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              );
+                            }
+
+                            // Sort programs by result count (descending)
+                            final sortedPrograms = List<Map<String, dynamic>>.from(_programs);
+                            sortedPrograms.sort((a, b) {
+                              final idA = a['id']?.toString() ?? '';
+                              final idB = b['id']?.toString() ?? '';
+                              final countA = _getResultsForProgram(idA, docs).length;
+                              final countB = _getResultsForProgram(idB, docs).length;
+                              return countB.compareTo(countA); // Descending
+                            });
+
+                            return ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: sortedPrograms.length,
+                              itemBuilder: (context, i) => _buildProgramCard(sortedPrograms[i], docs),
                             );
-                          }).toList(),
-                        ],
-                      ),
-                    ),
-            ),
-            
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('results')
-                    .orderBy('timestamp', descending: true)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)));
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.assignment_turned_in_outlined,
-                            color: Colors.white.withOpacity(0.5),
-                            size: 80,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No results available yet',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  // Get all docs
-                  final allDocs = snapshot.data!.docs;
-
-                  // Filter by selected program
-                  final programFilteredDocs = _selectedFilter == 'All'
-                      ? allDocs
-                      : allDocs.where((doc) {
-                          try {
-                            // Try both 'programId' and 'program_id' field names
-                            final programId = doc.get('program_id') ?? doc.get('programId') ?? '';
-                            print("🔍 Document: ${doc.id}, Program ID: $programId, Selected: $_selectedFilter");
-                            return programId.toString() == _selectedFilter;
-                          } catch (e) {
-                            print("⚠️ Error reading program_id from ${doc.id}: $e");
-                            return false;
-                          }
-                        }).toList();
-
-                  // Filter by search query
-                  final filteredDocs = programFilteredDocs.where((doc) {
-                    final eventName = (doc['eventName'] ?? '').toString().toLowerCase();
-                    final fileName = (doc['fileName'] ?? '').toString().toLowerCase();
-                    return eventName.contains(_searchQuery) || fileName.contains(_searchQuery);
-                  }).toList();
-
-                  if (programFilteredDocs.isEmpty && _selectedFilter != 'All') {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            color: Colors.white.withOpacity(0.5),
-                            size: 60,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No results for this program',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  if (filteredDocs.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.search_off,
-                            color: Colors.white.withOpacity(0.5),
-                            size: 60,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No matching results found',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    itemCount: filteredDocs.length,
-                    itemBuilder: (context, index) {
-                      final doc = filteredDocs[index];
-                      final eventName = doc['eventName'] ?? 'Unknown Event';
-                      final fileUrl = doc['fileUrl'] ?? '';
-                      
-                      // Get program ID and display program name
-                      String programDisplayName = '';
-                      try {
-                        final programId = doc.get('program_id') ?? doc.get('programId') ?? '';
-                        programDisplayName = _programIdToName[programId] ?? 'Unknown Program';
-                      } catch (e) {
-                        programDisplayName = 'Unknown Program';
-                      }
-                      
-                      // Timestamp
-                      String dateStr = '';
-                      if (doc['timestamp'] != null) {
-                         final ts = doc['timestamp'] as Timestamp;
-                         dateStr = DateFormat('MMM d, yyyy').format(ts.toDate());
-                      }
-
-                      final fileName = doc['fileName'] ?? 'View Result';
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              const Color(0xFF2A2A3E),
-                              const Color(0xFF2A2A3E).withOpacity(0.6),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.08),
-                            width: 1,
-                          ),
+                          },
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () => _openResult(context, fileUrl, fileName),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF6C63FF).withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Icon(
-                                          Icons.emoji_events_rounded,
-                                          color: Color(0xFF6C63FF),
-                                          size: 22,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              eventName,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w700,
-                                                height: 1.2,
-                                                letterSpacing: 0.2,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.calendar_today_rounded,
-                                                  size: 12,
-                                                  color: Colors.white.withOpacity(0.4),
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  dateStr,
-                                                  style: TextStyle(
-                                                    color: Colors.white.withOpacity(0.4),
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Program Badge
-                                  if (programDisplayName.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(bottom: 12.0),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF6C63FF).withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(
-                                            color: const Color(0xFF6C63FF).withOpacity(0.4),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          programDisplayName,
-                                          style: const TextStyle(
-                                            color: Color(0xFF6C63FF),
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.25),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.white.withOpacity(0.05)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.picture_as_pdf_rounded,
-                                          color: Colors.redAccent,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            fileName,
-                                            style: TextStyle(
-                                              color: Colors.white.withOpacity(0.9),
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Icon(
-                                          Icons.arrow_forward_rounded,
-                                          color: Color(0xFF6C63FF),
-                                          size: 14,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
