@@ -45,7 +45,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Future<void> _fetchPrograms() async {
     try {
-      const String baseUrl = "http://192.168.1.3:3000/api";
+      const String baseUrl = "http://10.1.160.89:3000/api";
 
       print("📡 Fetching programs from backend...");
 

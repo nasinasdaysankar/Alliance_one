@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key});
@@ -16,11 +18,91 @@ class ResultsScreen extends StatefulWidget {
 class _ResultsScreenState extends State<ResultsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String _selectedFilter = 'All';
+  List<Map<String, dynamic>> _programs = [];
+  bool _loadingPrograms = true;
+  Map<String, String> _programIdToName = {}; // Map to store program ID -> Name
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPrograms();
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchPrograms() async {
+    try {
+      const String baseUrl = "http://10.1.160.89:3000/api";
+
+      print("📡 Fetching programs from backend...");
+
+      final response = await http.get(
+        Uri.parse("$baseUrl/programs"),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception('Request timeout'),
+      );
+
+      print("📊 Response Status: ${response.statusCode}");
+      print("📦 Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> programList = jsonDecode(response.body);
+        print("✅ Programs loaded: ${programList.length}");
+
+        if (mounted) {
+          // Create a map for quick lookup
+          final Map<String, String> idToName = {};
+          
+          setState(() {
+            _programs = programList
+                .map((p) {
+                  final id = p['id']?.toString() ?? '';
+                  final name = p['name']?.toString() ?? 'Unknown Program';
+                  idToName[id] = name;
+                  return {
+                    'id': id,
+                    'name': name,
+                  };
+                })
+                .cast<Map<String, dynamic>>()
+                .toList();
+            
+            _programIdToName = idToName;
+            _loadingPrograms = false;
+
+            if (_programs.isNotEmpty) {
+              print("✅ Programs set in state: ${_programs.length}");
+              print("📋 Program Map: $_programIdToName");
+            }
+          });
+        }
+      } else {
+        print("❌ Failed to load programs: ${response.statusCode}");
+        if (mounted) {
+          setState(() {
+            _loadingPrograms = false;
+            _programs = [];
+          });
+        }
+      }
+    } catch (e) {
+      print("🔥 Error fetching programs: $e");
+      if (mounted) {
+        setState(() {
+          _loadingPrograms = false;
+          _programs = [];
+        });
+      }
+    }
   }
 
   Future<void> _openResult(BuildContext context, String url, String fileName) async {
@@ -65,6 +147,21 @@ class _ResultsScreenState extends State<ResultsScreen> {
     }
   }
 
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white70,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.0,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,11 +176,105 @@ class _ResultsScreenState extends State<ResultsScreen> {
         ),
         child: Column(
           children: [
+            // Program Filter Chips
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: _loadingPrograms
+                  ? const SizedBox(
+                      height: 40,
+                      child: CircularProgressIndicator(
+                          color: Color(0xFF6C63FF)))
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          // "All" chip
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedFilter = 'All';
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: _selectedFilter == 'All'
+                                      ? const Color(0xFF6C63FF)
+                                      : Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: _selectedFilter == 'All'
+                                        ? const Color(0xFF6C63FF)
+                                        : Colors.white.withOpacity(0.2),
+                                  ),
+                                ),
+                                child: Text(
+                                  'All',
+                                  style: TextStyle(
+                                    color: _selectedFilter == 'All'
+                                        ? Colors.white
+                                        : Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Program chips
+                          ..._programs.map((program) {
+                            final programId = program['id']?.toString() ?? '';
+                            final programName = program['name'] ?? 'Unknown';
+                            final isSelected = _selectedFilter == programId;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedFilter = programId;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFF6C63FF)
+                                        : Colors.white.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFF6C63FF)
+                                          : Colors.white.withOpacity(0.2),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    programName,
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.white70,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+            ),
+
             // Search Bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: SizedBox(
-                height: 48, // Compact height
+                height: 48,
                 child: TextField(
                   controller: _searchController,
                   onChanged: (value) {
@@ -102,7 +293,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0), // Centered vertically due to fixed height
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
                   ),
                 ),
               ),
@@ -143,13 +334,54 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     );
                   }
 
-                  // Filter logic
+                  // Get all docs
                   final allDocs = snapshot.data!.docs;
-                  final filteredDocs = allDocs.where((doc) {
+
+                  // Filter by selected program
+                  final programFilteredDocs = _selectedFilter == 'All'
+                      ? allDocs
+                      : allDocs.where((doc) {
+                          try {
+                            // Try both 'programId' and 'program_id' field names
+                            final programId = doc.get('program_id') ?? doc.get('programId') ?? '';
+                            print("🔍 Document: ${doc.id}, Program ID: $programId, Selected: $_selectedFilter");
+                            return programId.toString() == _selectedFilter;
+                          } catch (e) {
+                            print("⚠️ Error reading program_id from ${doc.id}: $e");
+                            return false;
+                          }
+                        }).toList();
+
+                  // Filter by search query
+                  final filteredDocs = programFilteredDocs.where((doc) {
                     final eventName = (doc['eventName'] ?? '').toString().toLowerCase();
                     final fileName = (doc['fileName'] ?? '').toString().toLowerCase();
                     return eventName.contains(_searchQuery) || fileName.contains(_searchQuery);
                   }).toList();
+
+                  if (programFilteredDocs.isEmpty && _selectedFilter != 'All') {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            color: Colors.white.withOpacity(0.5),
+                            size: 60,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No results for this program',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.5),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
                   if (filteredDocs.isEmpty) {
                     return Center(
@@ -183,6 +415,15 @@ class _ResultsScreenState extends State<ResultsScreen> {
                       final eventName = doc['eventName'] ?? 'Unknown Event';
                       final fileUrl = doc['fileUrl'] ?? '';
                       
+                      // Get program ID and display program name
+                      String programDisplayName = '';
+                      try {
+                        final programId = doc.get('program_id') ?? doc.get('programId') ?? '';
+                        programDisplayName = _programIdToName[programId] ?? 'Unknown Program';
+                      } catch (e) {
+                        programDisplayName = 'Unknown Program';
+                      }
+                      
                       // Timestamp
                       String dateStr = '';
                       if (doc['timestamp'] != null) {
@@ -193,7 +434,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                       final fileName = doc['fileName'] ?? 'View Result';
 
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 12), // Reduced margin
+                        margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
@@ -222,7 +463,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                             borderRadius: BorderRadius.circular(20),
                             onTap: () => _openResult(context, fileUrl, fileName),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16), // Reduced Padding
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -230,7 +471,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.all(10), // Smaller Icon Container
+                                        padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF6C63FF).withOpacity(0.15),
                                           borderRadius: BorderRadius.circular(12),
@@ -238,7 +479,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                         child: const Icon(
                                           Icons.emoji_events_rounded,
                                           color: Color(0xFF6C63FF),
-                                          size: 22, // Smaller Icon
+                                          size: 22,
                                         ),
                                       ),
                                       const SizedBox(width: 12),
@@ -250,7 +491,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                               eventName,
                                               style: const TextStyle(
                                                 color: Colors.white,
-                                                fontSize: 16, // Smaller Font
+                                                fontSize: 16,
                                                 fontWeight: FontWeight.w700,
                                                 height: 1.2,
                                                 letterSpacing: 0.2,
@@ -269,7 +510,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                                   dateStr,
                                                   style: TextStyle(
                                                     color: Colors.white.withOpacity(0.4),
-                                                    fontSize: 11, // Smaller Font
+                                                    fontSize: 11,
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
@@ -280,9 +521,32 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 12),
+                                  // Program Badge
+                                  if (programDisplayName.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 12.0),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF6C63FF).withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: const Color(0xFF6C63FF).withOpacity(0.4),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          programDisplayName,
+                                          style: const TextStyle(
+                                            color: Color(0xFF6C63FF),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Compact File Area
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     decoration: BoxDecoration(
                                       color: Colors.black.withOpacity(0.25),
                                       borderRadius: BorderRadius.circular(12),
