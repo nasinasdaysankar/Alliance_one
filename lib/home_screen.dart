@@ -23,7 +23,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   int _currentPage = 0;
   int _lastPageBeforeResults = 0;
   bool _hasUnreadNotifications = false;
-  bool _showChatBot = false;
   late AnimationController _bellAnimController;
   late Animation<double> _bellAnimation;
 
@@ -156,10 +155,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _goToPage(1);
   }
 
-  void _toggleChatBot() {
-    setState(() {
-      _showChatBot = !_showChatBot;
-    });
+  void _openChatBot() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => AllianceBotScreen(
+        onClose: () => Navigator.pop(context),
+      ),
+    );
   }
 
   @override
@@ -216,35 +221,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ],
                 ),
 
-                // 🤖 ALLIANCE BOT CHATBOT OVERLAY
+                // 🤖 CHATBOT FLOATING ACTION BUTTON
                 Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    height: _showChatBot ? 400 : 0,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      child: AllianceBotScreen(
-                        onClose: _toggleChatBot,
-                      ),
-                    ),
-                  ),
-                ),
-
-                // 🤖 CHATBOT BUTTON (Always visible at bottom)
-                Positioned(
-                  bottom: 16,
-                  right: 16,
+                  bottom: 20,
+                  right: 20,
                   child: GestureDetector(
-                    onTap: _toggleChatBot,
+                    onTap: _openChatBot,
                     child: Container(
-                      width: 60,
-                      height: 60,
+                      width: 64,
+                      height: 64,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                           colors: [
                             AppTheme.primaryColor,
                             AppTheme.primaryColor.withOpacity(0.8),
@@ -253,21 +242,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primaryColor.withOpacity(0.5),
-                            blurRadius: 15,
-                            spreadRadius: 2,
+                            color: AppTheme.primaryColor.withOpacity(0.6),
+                            blurRadius: 20,
+                            spreadRadius: 3,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Icon(
-                            _showChatBot ? Icons.close : Icons.chat_bubble_outline,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ],
+                      child: const Icon(
+                        Icons.chat_bubble_rounded,
+                        color: Colors.white,
+                        size: 30,
                       ),
                     ),
                   ),
