@@ -769,22 +769,6 @@ class _AllianceBotScreenState extends State<AllianceBotScreen>
         ),
         child: Row(
           children: [
-            // Emoji/Attachment button
-            Container(
-              margin: const EdgeInsets.only(left: 6),
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Icon(
-                Icons.emoji_emotions_outlined,
-                color: Colors.white.withOpacity(0.5),
-                size: 22,
-              ),
-            ),
-            
             // Text field
             Expanded(
               child: TextField(
