@@ -1,3 +1,4 @@
+import 'package:alliance_one/config/api.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -43,64 +44,58 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
-  Future<void> _fetchPrograms() async {
-    try {
-      const String baseUrl = "http://10.1.160.89:3000/api";
+ Future<void> _fetchPrograms() async {
+  try {
+    print("📡 Fetching programs from backend...");
 
-      print("📡 Fetching programs from backend...");
+    final response = await http
+        .get(
+          Uri.parse("${ApiConfig.baseUrl}/programs"),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw Exception('Request timeout'),
+        );
 
-      final response = await http.get(
-        Uri.parse("$baseUrl/programs"),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw Exception('Request timeout'),
-      );
+    print("📊 Response Status: ${response.statusCode}");
+    print("📦 Response Body: ${response.body}");
 
-      print("📊 Response Status: ${response.statusCode}");
-      print("📦 Response Body: ${response.body}");
+    if (response.statusCode == 200) {
+      final List<dynamic> programList = jsonDecode(response.body);
+      print("✅ Programs loaded: ${programList.length}");
 
-      if (response.statusCode == 200) {
-        final List<dynamic> programList = jsonDecode(response.body);
-        print("✅ Programs loaded: ${programList.length}");
+      if (!mounted) return;
 
-        if (mounted) {
-          setState(() {
-            _programs = programList
-                .map((p) => {
-                      'id': p['id']?.toString() ?? '',
-                      'name': p['name']?.toString() ?? 'Unknown Program',
-                    })
-                .cast<Map<String, dynamic>>()
-                .toList();
-            _loadingPrograms = false;
-
-            if (_programs.isNotEmpty) {
-              print("✅ Programs set in state: ${_programs.length}");
-            }
-          });
-        }
-      } else {
-        print("❌ Failed to load programs: ${response.statusCode}");
-        if (mounted) {
-          setState(() {
-            _loadingPrograms = false;
-            _programs = [];
-          });
-        }
-      }
-    } catch (e) {
-      print("🔥 Error fetching programs: $e");
-      if (mounted) {
-        setState(() {
-          _loadingPrograms = false;
-          _programs = [];
-        });
-      }
+      setState(() {
+        _programs = programList
+            .map((p) => {
+                  'id': p['id']?.toString() ?? '',
+                  'name': p['name']?.toString() ?? 'Unknown Program',
+                })
+            .toList();
+        _loadingPrograms = false;
+      });
+    } else {
+      print("❌ Failed to load programs: ${response.statusCode}");
+      if (!mounted) return;
+      setState(() {
+        _loadingPrograms = false;
+        _programs = [];
+      });
     }
+  } catch (e) {
+    print("🔥 Error fetching programs: $e");
+    if (!mounted) return;
+    setState(() {
+      _loadingPrograms = false;
+      _programs = [];
+    });
   }
+}
+
 
   Future<void> _markAsRead(String id) async {
     if (!_readIds.contains(id)) {

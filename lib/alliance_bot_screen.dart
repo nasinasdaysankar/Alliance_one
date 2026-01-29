@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:io' as io;
+import 'config/api.dart';
 
 class AllianceBotScreen extends StatefulWidget {
   final VoidCallback onClose;
@@ -26,10 +26,7 @@ class _AllianceBotScreenState extends State<AllianceBotScreen>
   final DraggableScrollableController _sheetController = DraggableScrollableController();
 
   static String get _apiUrl {
-    if (io.Platform.isAndroid) {
-      return 'http://10.0.2.2:3000/api/chat/ask';
-    }
-    return 'http://localhost:3000/api/chat/ask';
+    return '${ApiConfig.baseUrl}/chat/ask';
   }
 
   @override

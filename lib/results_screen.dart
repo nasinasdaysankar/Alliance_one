@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'config/api.dart';
 
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key});
@@ -34,9 +35,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
   Future<void> _fetchPrograms() async {
     try {
-      const baseUrl = "http://10.1.160.89:3000/api";
+      print('📡 Fetching programs from: ${ApiConfig.baseUrl}/programs');
+      
       final response = await http
-          .get(Uri.parse("$baseUrl/programs"))
+          .get(Uri.parse("${ApiConfig.baseUrl}/programs"))
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) throw Exception('Failed to load programs');
