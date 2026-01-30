@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'theme.dart';
 
 class NotificationsPage extends StatefulWidget {
   final VoidCallback? onResultClick;
@@ -130,11 +131,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            color: AppTheme.cardColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -146,15 +147,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      style: AppTheme.darkTheme.textTheme.titleLarge?.copyWith(
+                        color: AppTheme.textColor,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white54),
+                    icon: Icon(Icons.close_rounded, color: AppTheme.subTextColor),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -163,24 +162,23 @@ class _NotificationsPageState extends State<NotificationsPage> {
               Container(
                 width: double.infinity,
                 height: 1,
-                color: Colors.white.withOpacity(0.1),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                body,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                  height: 1.5,
-                ),
+                color: Colors.white.withOpacity(0.05),
               ),
               const SizedBox(height: 20),
+              Text(
+                body,
+                style: AppTheme.darkTheme.textTheme.bodyLarge?.copyWith(
+                  color: AppTheme.subTextColor,
+                  height: 1.6,
+                ),
+              ),
+              const SizedBox(height: 24),
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(
                   timeStr,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.3),
+                  style: AppTheme.darkTheme.textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.mutedTextColor,
                     fontSize: 12,
                   ),
                 ),
@@ -194,14 +192,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
       child: Text(
         title,
-        style: const TextStyle(
-          color: Colors.white70,
-          fontSize: 14,
+        style: AppTheme.darkTheme.textTheme.labelLarge?.copyWith(
+          color: AppTheme.mutedTextColor,
+          letterSpacing: 1.2,
           fontWeight: FontWeight.bold,
-          letterSpacing: 1.0,
         ),
       ),
     );
@@ -218,7 +215,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
       programId = doc.get('program_id') ?? '';
     } catch (e) {
       programId = '';
-      print("⚠️ program_id field missing in document $id");
     }
 
     final isResultNotification = title.toString().toLowerCase().contains('result') ||
@@ -232,6 +228,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
           .format((doc['time'] as Timestamp).toDate());
     }
 
+    // Colors determine state
+    final Color unreadBgColor = AppTheme.surfaceColor; // Distinct purple-grey
+    final Color readBgColor = Colors.transparent; // Blends into background
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Slidable(
@@ -243,63 +243,53 @@ class _NotificationsPageState extends State<NotificationsPage> {
             CustomSlidableAction(
               onPressed: (_) => _deleteNotification(id),
               backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
+              foregroundColor: AppTheme.accentSecondary,
               padding: EdgeInsets.zero,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
+                   Container(
                     padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentSecondary.withOpacity(0.2),
                       shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.accentSecondary, width: 1),
                     ),
-                    child:
-                        const Icon(Icons.delete, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Delete',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    child: const Icon(Icons.delete_outline_rounded, 
+                      color: AppTheme.accentSecondary, size: 20),
                   ),
                 ],
               ),
             ),
           ],
         ),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.black.withOpacity(0.4),
-                Colors.black.withOpacity(0.3),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(18),
+            color: isRead ? readBgColor : unreadBgColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
             border: Border.all(
               color: isResultNotification
-                  ? const Color(0xFF6C63FF).withOpacity(0.8)
-                  : Colors.white.withOpacity(0.15),
-              width: 1.2,
+                  ? const Color(0xFF6C63FF).withOpacity(0.5)
+                  : (isRead 
+                      ? Colors.white.withOpacity(0.05) 
+                      : AppTheme.primaryColor.withOpacity(0.3)),
+              width: 1,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+             boxShadow: isRead 
+                ? [] 
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
               onTap: () {
                 _markAsRead(id);
                 if (isResultNotification) {
@@ -310,30 +300,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
               },
               child: Padding(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Icon Container
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: isResultNotification
-                            ? const Color(0xFF6C63FF).withOpacity(0.2)
-                            : Colors.white.withOpacity(0.05),
+                            ? AppTheme.primaryColor.withOpacity(0.1)
+                            : (isRead 
+                                ? Colors.white.withOpacity(0.05)
+                                : AppTheme.primaryColor.withOpacity(0.1)),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         isResultNotification
-                            ? Icons.emoji_events
-                            : Icons.notifications_active,
-                        color: isResultNotification
-                            ? const Color(0xFF6C63FF)
-                                .withOpacity(isRead ? 0.7 : 1.0)
-                            : Colors.white.withOpacity(isRead ? 0.5 : 0.9),
-                        size: 20,
+                            ? Icons.emoji_events_rounded
+                            : (isRead ? Icons.notifications_none_rounded : Icons.notifications_active_rounded),
+                         color: isResultNotification
+                            ? AppTheme.primaryColor
+                            : (isRead 
+                                ? AppTheme.subTextColor.withOpacity(0.5)
+                                : AppTheme.primaryColor),
+                        size: 24,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
+                    
+                    // Text Content
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,53 +340,65 @@ class _NotificationsPageState extends State<NotificationsPage> {
                               Expanded(
                                 child: Text(
                                   title,
-                                  style: TextStyle(
-                                    color: Colors.white
-                                        .withOpacity(isRead ? 0.7 : 1.0),
-                                    fontSize: 14,
-                                    fontWeight: isRead
-                                        ? FontWeight.normal
+                                  style: AppTheme.darkTheme.textTheme.titleMedium?.copyWith(
+                                    color: isRead 
+                                        ? AppTheme.subTextColor 
+                                        : AppTheme.textColor,
+                                    fontWeight: isRead 
+                                        ? FontWeight.w500 
                                         : FontWeight.bold,
                                   ),
+                                ),
+                              ),
+                              if (!isRead)
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppTheme.accentSecondary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            body,
+                            style: AppTheme.darkTheme.textTheme.bodyMedium?.copyWith(
+                              color: isRead 
+                                  ? AppTheme.mutedTextColor 
+                                  : AppTheme.subTextColor,
+                              height: 1.4,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                timeStr,
+                                style: AppTheme.darkTheme.textTheme.bodySmall?.copyWith( // Using bodySmall essentially
+                                  color: AppTheme.mutedTextColor,
+                                  fontSize: 10,
                                 ),
                               ),
                               if (isResultNotification)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
+                                      horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF6C63FF)
-                                        .withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(6),
+                                    color: AppTheme.primaryColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
                                   ),
-                                  child: const Text('VIEW',
+                                  child: Text('VIEW RESULT',
                                       style: TextStyle(
-                                          fontSize: 9,
-                                          color: Color(0xFF6C63FF),
+                                          fontSize: 10,
+                                          color: AppTheme.primaryColor,
                                           fontWeight: FontWeight.bold)),
                                 )
                             ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            body,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(isRead ? 0.5 : 0.8),
-                              fontSize: 12,
-                              fontWeight:
-                                  isRead ? FontWeight.normal : FontWeight.w500,
-                              height: 1.3,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            timeStr,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.3),
-                              fontSize: 10,
-                            ),
                           ),
                         ],
                       ),
@@ -408,23 +416,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppTheme.darkBackground,
       body: Stack(
         children: [
           // Background with gradient
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1A0033),
-                  Color(0xFF2D1B4E),
-                  Color(0xFF3D2861),
-                  Color(0xFF4A3675),
-                ],
-                stops: [0.0, 0.3, 0.6, 1.0],
-              ),
+              gradient: AppTheme.backgroundGradient,
             ),
           ),
           // Decorative circles
@@ -581,24 +579,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                           horizontal: 16, vertical: 8),
                                       decoration: BoxDecoration(
                                         color: _selectedFilter == 'All'
-                                            ? const Color(0xFF6C63FF)
-                                            : Colors.white.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(20),
+                                            ? AppTheme.primaryColor
+                                            : AppTheme.surfaceColor,
+                                        borderRadius: BorderRadius.circular(AppTheme.radiusRound),
                                         border: Border.all(
                                           color: _selectedFilter == 'All'
-                                              ? const Color(0xFF6C63FF)
-                                              : Colors.white.withOpacity(0.2),
+                                              ? AppTheme.primaryColor
+                                              : AppTheme.surfaceLight,
                                         ),
                                       ),
                                       child: Text(
                                         'All',
-                                        style: TextStyle(
-                                          color: _selectedFilter == 'All'
-                                              ? Colors.white
-                                              : Colors.white70,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        style: _selectedFilter == 'All'
+                                          ? AppTheme.darkTheme.textTheme.labelLarge?.copyWith(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                            )
+                                          : AppTheme.darkTheme.textTheme.bodyMedium?.copyWith(
+                                              color: AppTheme.subTextColor,
+                                              fontSize: 12,
+                                            ),
                                       ),
                                     ),
                                   ),
@@ -623,24 +623,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                             horizontal: 16, vertical: 8),
                                         decoration: BoxDecoration(
                                           color: isSelected
-                                              ? const Color(0xFF6C63FF)
-                                              : Colors.white.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(20),
+                                              ? AppTheme.primaryColor
+                                              : AppTheme.surfaceColor,
+                                          borderRadius: BorderRadius.circular(AppTheme.radiusRound),
                                           border: Border.all(
                                             color: isSelected
-                                                ? const Color(0xFF6C63FF)
-                                                : Colors.white.withOpacity(0.2),
+                                                ? AppTheme.primaryColor
+                                                : AppTheme.surfaceLight,
                                           ),
                                         ),
                                         child: Text(
                                           programName,
-                                          style: TextStyle(
-                                            color: isSelected
-                                                ? Colors.white
-                                                : Colors.white70,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                          style: isSelected
+                                            ? AppTheme.darkTheme.textTheme.labelLarge?.copyWith(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                              )
+                                            : AppTheme.darkTheme.textTheme.bodyMedium?.copyWith(
+                                                color: AppTheme.subTextColor,
+                                                fontSize: 12,
+                                              ),
                                         ),
                                       ),
                                     ),
@@ -658,18 +660,22 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         child: TextButton.icon(
                           onPressed: () => _markAllAsRead(
                               unreadDocs.map((d) => d.id).toList()),
-                          icon: const Icon(Icons.done_all,
-                              size: 16, color: Color(0xFF6C63FF)),
-                          label: const Text(
+                          icon: const Icon(Icons.done_all_rounded,
+                              size: 16, color: AppTheme.primaryColor),
+                          label: Text(
                             'Mark all as read',
-                            style: TextStyle(
-                                color: Color(0xFF6C63FF),
-                                fontWeight: FontWeight.bold),
+                            style: AppTheme.darkTheme.textTheme.labelLarge?.copyWith(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                            ),
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            alignment: Alignment.centerRight,
                           ),
                         ),
                       ),

@@ -10,6 +10,7 @@ import 'results_screen.dart';
 import 'find_venue_screen.dart';
 import 'alliance_bot_screen.dart';
 import 'theme.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -324,16 +325,32 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             }
                           },
                         )
-                      : _buildIconButton(
-                          icon: Icons.location_on_rounded,
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const FindVenueScreen(),
-                              ),
-                            );
-                          },
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildIconButton(
+                              icon: Icons.settings_rounded,
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SettingsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildIconButton(
+                              icon: Icons.location_on_rounded,
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const FindVenueScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ),
                 ),
 

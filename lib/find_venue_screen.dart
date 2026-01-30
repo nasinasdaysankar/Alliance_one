@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'theme.dart';
 
 class FindVenueScreen extends StatefulWidget {
   const FindVenueScreen({super.key});
@@ -118,22 +119,13 @@ class _FindVenueScreenState extends State<FindVenueScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.darkBackground,
       body: Stack(
         children: [
           // Background with gradient
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1A0033),
-                  Color(0xFF2D1B4E),
-                  Color(0xFF3D2861),
-                  Color(0xFF4A3675),
-                ],
-                stops: [0.0, 0.3, 0.6, 1.0],
-              ),
+              gradient: AppTheme.backgroundGradient,
             ),
           ),
           // Decorative circles
@@ -215,17 +207,17 @@ class _FindVenueScreenState extends State<FindVenueScreen>
                         child: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
+                            color: AppTheme.surfaceColor,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.15),
+                              color: Colors.white.withOpacity(0.05),
                               width: 1,
                             ),
                           ),
                           child: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.white,
-                            size: 18,
+                            Icons.chevron_left_rounded,
+                            color: AppTheme.textColor,
+                            size: 24,
                           ),
                         ),
                       ),
@@ -233,10 +225,7 @@ class _FindVenueScreenState extends State<FindVenueScreen>
                         child: Center(
                           child: Text(
                             'Venues',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 28,
+                            style: AppTheme.darkTheme.textTheme.displayMedium?.copyWith(
                               letterSpacing: 0.8,
                             ),
                           ),

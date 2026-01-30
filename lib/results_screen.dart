@@ -8,6 +8,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'config/api.dart';
+import 'theme.dart';
 
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key});
@@ -129,12 +130,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withOpacity(0.11)),
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withOpacity(0.1),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -145,8 +146,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.13),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.redAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                   ),
                   child: const Icon(Icons.picture_as_pdf_rounded, color: Colors.redAccent, size: 24),
                 ),
@@ -157,25 +158,21 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     children: [
                         Text(
                           eventName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15.5,
+                          style: AppTheme.darkTheme.textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w600,
-                            height: 1.3,
                           ),
                         ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 4),
                       Text(
                         dateStr.isEmpty ? '—' : dateStr,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.65),
-                          fontSize: 13.5,
+                        style: AppTheme.darkTheme.textTheme.bodySmall?.copyWith(
+                          color: AppTheme.subTextColor,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 20),
+                const Icon(Icons.chevron_right_rounded, color: AppTheme.subTextColor, size: 20),
               ],
             ),
           ),
@@ -197,22 +194,15 @@ class _ResultsScreenState extends State<ResultsScreen> {
         borderRadius: BorderRadius.circular(20),
         child: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.black.withOpacity(0.4),
-                Colors.black.withOpacity(0.3),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
+            color: AppTheme.cardColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
             border: Border.all(
-              color: Colors.white.withOpacity(0.15),
-              width: 1.2,
+              color: Colors.white.withOpacity(0.05),
+              width: 1,
             ),
-            boxShadow: [
+             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withOpacity(0.2),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -239,12 +229,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6C63FF).withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(14),
+                          color: AppTheme.primaryColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                         ),
                         child: const Icon(
                           Icons.folder_rounded,
-                          color: Color(0xFF9F91FF),
+                          color: AppTheme.primaryColor,
                           size: 26,
                         ),
                       ),
@@ -255,25 +245,20 @@ class _ResultsScreenState extends State<ResultsScreen> {
                           children: [
                             Text(
                               name,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                letterSpacing: 0.2,
-                              ),
+                              style: AppTheme.darkTheme.textTheme.titleMedium,
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF6C63FF).withOpacity(0.16),
-                                borderRadius: BorderRadius.circular(20),
+                                color: AppTheme.surfaceColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withOpacity(0.05)),
                               ),
                               child: Text(
                                 '$count ${count == 1 ? "Result" : "Results"}',
-                                style: const TextStyle(
-                                  color: Color(0xFF9F91FF),
-                                  fontSize: 13,
+                                style: AppTheme.darkTheme.textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.subTextColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -359,22 +344,13 @@ class _ResultsScreenState extends State<ResultsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.darkBackground,
       body: Stack(
         children: [
           // Background with gradient
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1A0033),
-                  Color(0xFF2D1B4E),
-                  Color(0xFF3D2861),
-                  Color(0xFF4A3675),
-                ],
-                stops: [0.0, 0.3, 0.6, 1.0],
-              ),
+              gradient: AppTheme.backgroundGradient,
             ),
           ),
           // Decorative circles
@@ -444,7 +420,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
               children: [
                 Expanded(
                   child: _loadingPrograms
-                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF9F91FF)))
+                      ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
                       : StreamBuilder<QuerySnapshot>(
                           stream: _resultsStream,
                           builder: (context, snapshot) {
@@ -457,12 +433,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.folder_open_outlined,
-                                        size: 80, color: Colors.white.withOpacity(0.35)),
+                                    Icon(Icons.folder_open_rounded,
+                                        size: 80, color: AppTheme.subTextColor.withOpacity(0.3)),
                                     const SizedBox(height: 16),
-                                    const Text(
+                                    Text(
                                       "No results available yet",
-                                      style: TextStyle(color: Colors.white70, fontSize: 18),
+                                      style: AppTheme.darkTheme.textTheme.titleMedium?.copyWith(color: AppTheme.subTextColor),
                                     ),
                                   ],
                                 ),
@@ -472,10 +448,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
                             final docs = snapshot.data!.docs;
 
                             if (_programs.isEmpty) {
-                              return const Center(
+                              return Center(
                                 child: Text(
                                   "No programs loaded",
-                                  style: TextStyle(color: Colors.white60, fontSize: 17),
+                                  style: AppTheme.darkTheme.textTheme.titleMedium?.copyWith(color: AppTheme.subTextColor),
                                 ),
                               );
                             }
