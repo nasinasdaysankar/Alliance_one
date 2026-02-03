@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:alliance_one/notification.dart';
+import 'package:alliance_one/screens/notifications_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,8 +9,9 @@ import 'webview_screen.dart';
 import 'results_screen.dart';
 import 'find_venue_screen.dart';
 import 'alliance_bot_screen.dart';
-import 'theme.dart';
+import '../theme/theme.dart';
 import 'settings_screen.dart';
+import 'legal_documents_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -157,13 +158,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _openChatBot() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withOpacity(0.5),
-      builder: (context) => AllianceBotScreen(
-        onClose: () => Navigator.pop(context),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AllianceBotScreen(
+          onClose: () => Navigator.pop(context),
+        ),
       ),
     );
   }
@@ -325,30 +325,80 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             }
                           },
                         )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildIconButton(
-                              icon: Icons.settings_rounded,
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const SettingsScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            _buildIconButton(
-                              icon: Icons.location_on_rounded,
-                              onPressed: () {
+                      : PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+                          color: AppTheme.surfaceColor,
+                          offset: const Offset(0, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          onSelected: (value) {
+                            if (value == 'find_venues') {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => const FindVenueScreen(),
                                   ),
                                 );
-                              },
+                            } else if (value == 'results') {
+                              _goToPage(2);
+                            } else if (value == 'privacy_policy') {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const PrivacyPolicyScreen(),
+                                  ),
+                                );
+                            } else if (value == 'terms_conditions') {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const TermsConditionsScreen(),
+                                  ),
+                                );
+                            }
+                          },
+                          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                            const PopupMenuItem<String>(
+                              value: 'find_venues',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.location_on_rounded, color: Colors.white, size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Find Venues', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'results',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.emoji_events_rounded, color: Colors.white, size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Results', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            const PopupMenuItem<String>(
+                              value: 'privacy_policy',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.privacy_tip_rounded, color: Colors.white, size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Privacy Policy', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'terms_conditions',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.description_rounded, color: Colors.white, size: 20),
+                                  SizedBox(width: 12),
+                                  Text('Terms & Conditions', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -401,13 +451,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               ),
                             );
                           },
-                        ),
-                      
-                      if (_currentPage == 0)
-                        _buildIconButton(
-                          icon: Icons.emoji_events_rounded,
-                          onPressed: () => _goToPage(2),
-                          isAccent: true,
                         ),
                     ],
                   ),

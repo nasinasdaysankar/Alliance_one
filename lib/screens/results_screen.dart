@@ -7,8 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'config/api.dart';
-import 'theme.dart';
+import '../config/api.dart';
+import '../theme/theme.dart';
+import '../widgets/shimmer_loading.dart';
 
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key});
@@ -420,12 +421,20 @@ class _ResultsScreenState extends State<ResultsScreen> {
               children: [
                 Expanded(
                   child: _loadingPrograms
-                      ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
+                      ? ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                          itemCount: 6,
+                          itemBuilder: (context, index) => const ShimmerCard(),
+                        )
                       : StreamBuilder<QuerySnapshot>(
                           stream: _resultsStream,
                           builder: (context, snapshot) {
                             if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator());
+                              return ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                                itemCount: 6,
+                                itemBuilder: (context, index) => const ShimmerCard(),
+                              );
                             }
 
                             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {

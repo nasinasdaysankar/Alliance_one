@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'config/api.dart';
+import '../config/api.dart';
 
 class AllianceBotScreen extends StatefulWidget {
   final VoidCallback onClose;
@@ -27,7 +27,7 @@ class _AllianceBotScreenState extends State<AllianceBotScreen>
   bool _isLoading = false;
   late AnimationController _pulseController;
   late AnimationController _waveController;
-  final DraggableScrollableController _sheetController = DraggableScrollableController();
+
 
   static String get _apiUrl {
     return '${ApiConfig.baseUrl}/chat/ask';
@@ -210,178 +210,140 @@ class _AllianceBotScreenState extends State<AllianceBotScreen>
     _scrollController.dispose();
     _pulseController.dispose();
     _waveController.dispose();
-    _sheetController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    
-    return DraggableScrollableSheet(
-      controller: _sheetController,
-      initialChildSize: 0.92,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      snap: true,
-      snapSizes: const [0.5, 0.75, 0.95],
-      builder: (context, scrollController) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF1A1A2E),
-                    Color(0xFF16213E),
-                    Color(0xFF0F0F23),
-                  ],
-                ),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Drag handle
-                  Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.2),
-                          Colors.white.withOpacity(0.4),
-                          Colors.white.withOpacity(0.2),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  
-                  _buildPremiumHeader(),
-                  
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.2),
-                          ],
-                        ),
-                      ),
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 20,
-                        ),
-                        itemCount: _messages.length + (_isLoading ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index == _messages.length) {
-                            return _buildTypingIndicator();
-                          }
-                          return _buildMessageBubble(_messages[index]);
-                        },
-                      ),
-                    ),
-                  ),
-                  
-                  _buildPremiumInputArea(bottomInset),
-                ],
-              ),
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1A1A2E),
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF1A1A2E),
+                Color(0xFF16213E),
+                Color(0xFF0F0F23),
+              ],
             ),
           ),
-        );
-      },
+          child: Column(
+            children: [
+              _buildPremiumHeader(),
+              
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.2),
+                      ],
+                    ),
+                  ),
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 20,
+                    ),
+                    itemCount: _messages.length + (_isLoading ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _messages.length) {
+                        return _buildTypingIndicator();
+                      }
+                      return _buildMessageBubble(_messages[index]);
+                    },
+                  ),
+                ),
+              ),
+              
+              _buildPremiumInputArea(),
+            ],
+          ),
+        ),
+      ),
+      ),
     );
   }
 
   Widget _buildPremiumHeader() {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF6C63FF).withOpacity(0.2),
-            const Color(0xFF9B59B6).withOpacity(0.15),
-            const Color(0xFF3498DB).withOpacity(0.1),
-          ],
-        ),
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.15),
-          width: 1.5,
+          color: Colors.white.withOpacity(0.05),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6C63FF).withOpacity(0.2),
-            blurRadius: 20,
-            spreadRadius: -5,
-          ),
-        ],
       ),
       child: Row(
         children: [
-          // University Logo Avatar
-          AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              return Container(
-                width: 56,
-                height: 56,
+          // Back Button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => Navigator.pop(context),
+              borderRadius: BorderRadius.circular(50),
+              child: Container(
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
                   shape: BoxShape.circle,
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6C63FF).withOpacity(
-                        0.4 + (_pulseController.value * 0.3),
-                      ),
-                      blurRadius: 20 + (_pulseController.value * 10),
-                      spreadRadius: 2,
-                    ),
-                    BoxShadow(
-                      color: const Color(0xFF9B59B6).withOpacity(0.3),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
-                child: ClipOval(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // Logo & Title
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF6C63FF).withOpacity(0.4),
+                        const Color(0xFF8B5CF6).withOpacity(0.2),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    border: Border.all(
+                      color: const Color(0xFF6C63FF).withOpacity(0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: ClipOval(
                     child: Image.asset(
                       'assets/images/alliance_logo.png',
                       fit: BoxFit.contain,
                     ),
                   ),
                 ),
-              );
-            },
-          ),
-          const SizedBox(width: 16),
-          
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(
@@ -391,95 +353,45 @@ class _AllianceBotScreenState extends State<AllianceBotScreen>
                         'Alliance AI',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF00D9A5), Color(0xFF00B894)],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF00D9A5).withOpacity(0.4),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: const Text(
-                        'PRO',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    AnimatedBuilder(
-                      animation: _pulseController,
-                      builder: (context, child) {
-                        return Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                         Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF00D9A5),
                             shape: BoxShape.circle,
-                            color: const Color(0xFF00D9A5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF00D9A5).withOpacity(
-                                  0.5 + (_pulseController.value * 0.5),
-                                ),
-                                blurRadius: 10,
-                                spreadRadius: 2,
-                              ),
-                            ],
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Always ready to help',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Online',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          
-          // Action buttons
-          Row(
-            children: [
-              _buildHeaderButton(
-                icon: Icons.refresh_rounded,
-                onTap: _clearChatHistory,
-                tooltip: 'Clear chat',
-              ),
-              const SizedBox(width: 8),
-              _buildHeaderButton(
-                icon: Icons.close_rounded,
-                onTap: widget.onClose,
-                tooltip: 'Close',
-                isPrimary: true,
-              ),
-            ],
+
+          // Clear Chat Button
+          _buildHeaderButton(
+            icon: Icons.delete_outline_rounded,
+            onTap: _clearChatHistory,
+            tooltip: 'Clear chat',
           ),
         ],
       ),
@@ -724,9 +636,9 @@ class _AllianceBotScreenState extends State<AllianceBotScreen>
     );
   }
 
-  Widget _buildPremiumInputArea(double bottomInset) {
+  Widget _buildPremiumInputArea() {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset + 20),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -738,37 +650,41 @@ class _AllianceBotScreenState extends State<AllianceBotScreen>
           ],
         ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF2D3748).withOpacity(0.8),
-              const Color(0xFF1A202C).withOpacity(0.9),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF2D3748).withOpacity(0.8),
+                const Color(0xFF1A202C).withOpacity(0.9),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.15),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF6C63FF).withOpacity(0.15),
+                blurRadius: 20,
+                spreadRadius: -5,
+                offset: const Offset(0, -5),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 5),
+              ),
             ],
           ),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.15),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF6C63FF).withOpacity(0.15),
-              blurRadius: 20,
-              spreadRadius: -5,
-              offset: const Offset(0, -5),
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Row(
+              children: [
             // Text field
             Expanded(
               child: TextField(
@@ -790,62 +706,48 @@ class _AllianceBotScreenState extends State<AllianceBotScreen>
                   ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                isDense: false,
                 ),
                 onSubmitted: _sendMessage,
               ),
             ),
             
             // Send button
-            Padding(
-              padding: const EdgeInsets.all(6),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _sendMessage(_messageController.text),
-                  borderRadius: BorderRadius.circular(22),
-                  child: AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFF6C63FF),
-                              Color(0xFF9B59B6),
-                            ],
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _sendMessage(_messageController.text),
+                borderRadius: BorderRadius.circular(24),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  child: _isLoading
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: const Color(0xFF6C63FF),
                           ),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF6C63FF).withOpacity(0.5),
-                              blurRadius: 16,
-                              spreadRadius: 0,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
+                        )
+                      : const Icon(
                           Icons.send_rounded,
-                          color: Colors.white,
-                          size: 22,
+                          color: Color(0xFF6C63FF),
+                          size: 24,
                         ),
-                      );
-                    },
-                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
+
 
   String _formatTime(DateTime timestamp) {
     final hour = timestamp.hour > 12 ? timestamp.hour - 12 : timestamp.hour;

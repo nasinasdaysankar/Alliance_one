@@ -1,4 +1,4 @@
-import 'models.dart';
+import '../models/models.dart';
 
 class EventsData {
   static const List<EventCategory> allCategories = [

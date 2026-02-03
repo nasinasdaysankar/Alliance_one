@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'theme.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class WebViewScreen extends StatefulWidget {
   final String url;
@@ -46,11 +47,7 @@ class _WebViewScreenState extends State<WebViewScreen> with AutomaticKeepAliveCl
           onWebResourceError: (error) {
             debugPrint('❌ WebView Error: ${error.errorCode} - ${error.description}');
             
-            // If the page finished loading, ignore subsequent errors (like background socket timeouts)
-            // protecting the user's view of the content.
             if (!_isLoading) return;
-
-            // Ignore "cancelled" or non-main-frame errors
             if (error.errorCode == -999) return;
             if (error.isForMainFrame == false) return;
             
@@ -58,6 +55,18 @@ class _WebViewScreenState extends State<WebViewScreen> with AutomaticKeepAliveCl
               _isLoading = false;
               _errorMessage = error.description;
             });
+          },
+          onNavigationRequest: (NavigationRequest request) async {
+            if (request.url.toLowerCase().endsWith('.pdf') || 
+                request.url.contains('brochure') || 
+                request.url.contains('download')) {
+              final Uri uri = Uri.parse(request.url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                return NavigationDecision.prevent;
+              }
+            }
+            return NavigationDecision.navigate;
           },
         ),
       )
@@ -132,39 +141,7 @@ class _WebViewScreenState extends State<WebViewScreen> with AutomaticKeepAliveCl
             ),
 
 
-          // Error View with Retry
-          if (_errorMessage != null)
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                margin: const EdgeInsets.symmetric(horizontal: 40),
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.amber, size: 48),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Oops! $_errorMessage',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _reload,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                      ),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+
 
           // Floating Back Button (only when can go back)
           if (_canGoBack)

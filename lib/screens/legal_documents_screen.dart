@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'theme.dart';
+import '../theme/theme.dart';
 
 class LegalDocumentScreen extends StatelessWidget {
   final String title;

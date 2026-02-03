@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'theme.dart';
+import '../theme/theme.dart';
 
 class FindVenueScreen extends StatefulWidget {
   const FindVenueScreen({super.key});

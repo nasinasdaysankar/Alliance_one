@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'models.dart';
-import 'theme.dart';
+import '../models/models.dart';
+import '../theme/theme.dart';
 
 class EventDetailsScreen extends StatefulWidget {
   final EventItem event;

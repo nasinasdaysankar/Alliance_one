@@ -6,7 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'theme.dart';
+import '../theme/theme.dart';
+import '../widgets/shimmer_loading.dart';
 
 class NotificationsPage extends StatefulWidget {
   final VoidCallback? onResultClick;
@@ -495,9 +496,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return const Center(
-                      child: CircularProgressIndicator(
-                          color: Color(0xFF6C63FF)));
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(top: 20),
+                    itemCount: 8,
+                    itemBuilder: (context, index) => const ShimmerListTile(),
+                  );
                 }
 
                 final allDocs = snapshot.data!.docs;

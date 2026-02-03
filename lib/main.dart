@@ -1,8 +1,8 @@
-import 'package:alliance_one/splash_screen.dart';
+import 'package:alliance_one/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'home_screen.dart';
-import 'theme.dart';
+import 'screens/home_screen.dart';
+import 'theme/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
