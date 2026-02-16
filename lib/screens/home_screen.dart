@@ -19,7 +19,7 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
-
+//it is the main screen of the app which contains the webview, notifications and results pages. It also handles the navigation between these pages and the chatbot floating action button. It also handles the notification permissions and FCM setup.
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentPage = 0;
