@@ -145,7 +145,7 @@ class _AllianceBotScreenState extends State<AllianceBotScreen>
             body: requestBody,
           )
           .timeout(
-            const Duration(seconds: 120),
+            const Duration(seconds: 30),
             onTimeout: () {
               throw Exception('Request timed out');
             },
